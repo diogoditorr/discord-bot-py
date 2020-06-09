@@ -1,0 +1,12 @@
+src
+*.mp3
+
+.idea
+.venv
+.vscode
+# Python Cache
+__pycache__
+
+# Files Created
+discord.log
+init.bat
