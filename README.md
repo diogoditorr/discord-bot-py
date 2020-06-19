@@ -17,7 +17,7 @@ def youtube_api_key():
 ```
 
 ## Requirements (Python packages. It's also in Pipfile)
-* **Youtube-dl** - I recommend install as in this repository as in your python PATH using `pip install youtube-dl`
+* **Youtube-dl** - I recommend install as in your virtual environment as in your python PATH using `pip install youtube-dl`
 * **Discord.py**
 * **google-api-python-client**
 
