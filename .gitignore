@@ -1,12 +1,18 @@
-src
+# Songs files
 *.mp3
+*.webm
 
+# Folders
+src
 .idea
 .venv
 .vscode
+
 # Python Cache
 __pycache__
+settings.py
 
 # Files Created
 discord.log
 init.bat
+*.db

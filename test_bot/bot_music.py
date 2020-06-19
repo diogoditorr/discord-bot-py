@@ -68,8 +68,13 @@ async def PlaySong(ctx):
             fut.result()
         except:
             pass
-
-    channel = ctx.message.author.voice.channel
+    
+    try:
+        channel = ctx.message.author.voice.channel
+    except AttributeError as error:
+        print(error)
+        await ctx.send("Você não está conectado em nenhum canal de voz.")
+        return
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if voice is not None:
@@ -173,6 +178,13 @@ def GetIdAndTitle(url):
 async def play(ctx, *, search: str):
     video = {'items': []}
     playlist = False
+
+    try:
+        channel = ctx.message.author.voice.channel
+    except AttributeError as error:
+        print(error)
+        await ctx.send("Você não está conectado em nenhum canal de voz.")
+        return
 
     if search.startswith('https://'):
         link = re.match(r"^https://www\.youtube\.com/(watch|playlist)\?(v|list)=([0-9A-Za-z_-]+).*$", search)

@@ -10,6 +10,15 @@ path = re.match(r"(?P<path>.+)\\", sys.path[0])
 sys.path.append(f"{path['path']}")
 # ---------------------------------------------------
 
+import logging
+logger = logging.getLogger('discord')
+logger.setLevel(logging.ERROR)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
+
+
+
 # Importa as configurações
 import settings
 

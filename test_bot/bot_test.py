@@ -2,6 +2,7 @@ import discord
 import asyncio
 from discord.ext import commands
 import logging
+import settings
 
 # Creates the 'discord.log' file
 logger = logging.getLogger('discord')
@@ -10,8 +11,11 @@ handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w'
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
+discord_token = settings.bot_token()
+prefix = settings.prefix()
+
 # Client is the connection to Discord
-client = commands.Bot(command_prefix='.')
+client = commands.Bot(command_prefix=prefix)
 
 print(discord.__version__)
 
@@ -88,4 +92,4 @@ async def test(ctx):
 
 
 
-client.run('NzA0NzI0OTc3NjI2MTIwMjEz.Xsx-sw.S4Ub_XcTbvR6wAyUSxrqbtoGAVA')
+client.run(discord_token)

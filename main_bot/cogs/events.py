@@ -1,4 +1,5 @@
 import discord
+import sys
 from discord.ext import commands
 from main_bot.cogs.tasks import Tasks
 
@@ -27,8 +28,10 @@ class Events(commands.Cog):
     async def on_message(self, msg):
         if msg.content.startswith('a'):
             print("O usuário pediu algum comando")
+            print(sys.path)
         else:
-            print(msg.content)
+            # print(msg.content)
+            pass
 
 
 def setup(client):

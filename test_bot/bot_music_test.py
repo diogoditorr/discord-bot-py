@@ -9,6 +9,9 @@ from apiclient import discovery
 from discord.ext import commands
 from discord.utils import get
 from googleapiclient.errors import HttpError
+
+import ast
+
 import settings
 
 logger = logging.getLogger('discord')
@@ -68,8 +71,13 @@ async def PlaySong(ctx):
             fut.result()
         except:
             pass
-
-    channel = ctx.message.author.voice.channel
+    
+    try:
+        channel = ctx.message.author.voice.channel
+    except AttributeError as error:
+        print(error)
+        await ctx.send("Você não está conectado em nenhum canal de voz.")
+        return
     voice = get(client.voice_clients, guild=ctx.guild)
 
     if voice is not None:
@@ -140,7 +148,7 @@ async def PlaySong(ctx):
                 voice.source.volume = 0.25
 
                 embed = discord.Embed(color=ctx.guild.me.top_role.color, title="**Playing Now**",
-                                      description=f"[{song['title']}]({song['url']}) [{song['user'].mention}]")
+                                      description=f"[{song['title']}]({song['url']}) [<@{song['user_id']}>]")
                 try:
                     await playing_now_message.delete()
                 except:
@@ -173,6 +181,13 @@ def GetIdAndTitle(url):
 async def play(ctx, *, search: str):
     video = {'items': []}
     playlist = False
+
+    try:
+        channel = ctx.message.author.voice.channel
+    except AttributeError as error:
+        print(error)
+        await ctx.send("Você não está conectado em nenhum canal de voz.")
+        return
 
     if search.startswith('https://'):
         link = re.match(r"^https://www\.youtube\.com/(watch|playlist)\?(v|list)=([0-9A-Za-z_-]+).*$", search)
@@ -317,7 +332,7 @@ async def play(ctx, *, search: str):
     # video = youtube_dl.YoutubeDL({}).extract_info(youtube_video_url, download=False)
 
     if not playlist:
-        queue.append({'title': youtube_video_title, 'url': youtube_video_url, 'user': ctx.author})
+        queue.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
         embed = discord.Embed(color=ctx.guild.me.top_role.color,
                               title='**Adicionado a Fila**',
                               description=f"[{youtube_video_title}]({youtube_video_url})  [{ctx.author.mention}]")
@@ -325,13 +340,19 @@ async def play(ctx, *, search: str):
         for song in video['items']:
             youtube_video_url = f"https://www.youtube.com/watch?v={song['snippet']['resourceId']['videoId']}"
             youtube_video_title = song['snippet']['title']
-            queue.append({'title': youtube_video_title, 'url': youtube_video_url, 'user': ctx.author})
+            queue.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
         embed = discord.Embed(color=ctx.guild.me.top_role.color,
                               title='**Adicionado a Fila**',
                               description=f"`{len(video['items'])}` músicas da playlist.  [{ctx.author.mention}]")
 
     await ctx.send(embed=embed)
     print("Added to queue\n")
+
+    # Módulo 'ast'
+    x = str(queue)
+    x = ast.literal_eval(x)
+    print(type(x))
+    print(f'"{x}"')
 
     await PlaySong(ctx)
 
@@ -380,13 +401,13 @@ async def _queue(ctx, page=1):
         i = tracks_number * (page - 1)
         if page == 1:
             if voice and voice.is_paused():
-                msg = msg + f'**⏸ {song["title"]}** - *[@{song["user"].name}]*\n'
+                msg = msg + f'**⏸ {song["title"]}** - *[@{song["user_name"]}]*\n'
             else:
-                msg = msg + f'**▶ {song["title"]}** - *[@{song["user"].name}]*\n'
+                msg = msg + f'**▶ {song["title"]}** - *[@{song["user_name"]}]*\n'
 
         for track in queue_list:
             i = i + 1
-            msg = msg + f'`[{i}]` **{track["title"]}** - *[@{track["user"].name}]*\n'
+            msg = msg + f'`[{i}]` **{track["title"]}** - *[@{track["user_name"]}]*\n'
 
         await ctx.send(msg)
 
@@ -513,12 +534,6 @@ async def join(ctx):
         await channel.connect()
 
     await ctx.send(f"Conectado ao canal `{channel}`.")
-
-
-@client.command()
-async def apo(ctx):
-    await ctx.send("Oi")
-
 
 @client.command()
 async def leave(ctx):
