@@ -1,4 +1,4 @@
-__*Still in Development*__
+## 🛠️ __*Still in Development*__
 
 # discord-bot-py
 Working with the Discord.py library
