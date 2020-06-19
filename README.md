@@ -23,3 +23,5 @@ def youtube_api_key():
 
 ## External Requirements
 * **FFmpeg** - It converts the audio to play on Discord. Download and place the directory of the folder in your Enviroment Variables.
+
+After you've done the things above. Just run `python ./main_bot/bot.py`
