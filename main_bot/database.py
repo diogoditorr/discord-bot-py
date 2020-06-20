@@ -43,15 +43,7 @@ class Database:
         self.connection.commit()
 
     def playlistAddTracks(self, guild_id, user_id, playlist_name, tracks):
-        self.cursor.execute("""
-            SELECT songs
-            FROM playlists
-            WHERE guild_id = ? AND
-            user_id = ? AND
-            playlist_name = ?
-        """, (guild_id, user_id, playlist_name))
-
-        songs = self.cursor.fetchone()[0]
+        songs = Database.playlistReturnTracks(self, guild_id, user_id, playlist_name)['tracks']
 
         if songs == "":
             songs = list(songs)
@@ -91,6 +83,18 @@ class Database:
             LOWER(playlist_name) = LOWER(?)
         """, (guild_id, user_id, playlist_name))
         return self.cursor.fetchone()[0]
+
+    def playlistReturnTracks(self, guild_id, user_id, playlist_name):
+        self.cursor.execute("""
+            SELECT privacy, songs
+            FROM playlists
+            WHERE guild_id = ? AND
+            user_id = ? AND
+            playlist_name = ?
+        """, (guild_id, user_id, playlist_name))
+
+        results = self.cursor.fetchone()
+        return {'privacy': f'{results[0]}', 'tracks': f'{results[1]}'}
 
     def playlistCheckExistence(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
