@@ -1,4 +1,5 @@
 import sqlite3
+import ast
 
 class Database:
     def __init__(self, database):
@@ -43,11 +44,31 @@ class Database:
 
     def playlistAddTracks(self, guild_id, user_id, playlist_name, tracks):
         self.cursor.execute("""
+            SELECT songs
+            FROM playlists
+            WHERE guild_id = ? AND
+            user_id = ? AND
+            playlist_name = ?
+        """, (guild_id, user_id, playlist_name))
+
+        songs = self.cursor.fetchone()[0]
+
+        if songs == "":
+            songs = list(songs)
+        else:
+            songs = ast.literal_eval(songs)
+        
+        for track in tracks:
+            songs.append(track)
+
+        tracks = str(songs)
+
+        self.cursor.execute("""
             UPDATE playlists
             SET songs = ?
             WHERE guild_id = ? AND
             user_id = ? AND
-            LOWER(playlist_name) = LOWER(?)
+            playlist_name = ?
         """, (tracks, guild_id, user_id, playlist_name))
         self.connection.commit()
 

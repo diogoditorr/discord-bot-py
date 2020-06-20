@@ -30,16 +30,11 @@ client = commands.Bot(command_prefix=prefix)
 cogs_PATH = f'{sys.path[0]}\cogs'
 
 def permsVerify(context):
-    perm = ['botmaintenance']
-    roles = [x.name for x in context.author.roles]
-    print(roles)
-
-    for x in range(0, len(perm)):
-        if roles.__contains__(perm[x]):
-            return True
-
-    context.send("Você não tem permissão para usar essa comando.")
-    return False
+    if context.message.author.id == context.guild.owner.id:
+        return True
+    else:
+        context.send("Você não tem permissão para usar essa comando.")
+        return False
 
 
 @client.command()

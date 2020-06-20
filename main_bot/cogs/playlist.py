@@ -42,25 +42,28 @@ class Playlist(commands.Cog):
     @commands.command()
     async def updateplaylist(self, ctx, *args):
 
-        if args[0] == 'private' or args[0] == 'public':
-            privacy = args[0]
-            playlist_name = " ".join(args[1:len(args)])
-        else:
-            privacy = 'public'
-            playlist_name = " ".join(args)
-
-        try:
-            if database.playlistCheckExistence(ctx.guild.id, ctx.author.id, playlist_name):
-                playlist_name = database.playlistReturnName(ctx.guild.id, ctx.author.id, playlist_name)
-                database.playlistUpdate(ctx.guild.id, ctx.author.id, playlist_name, privacy)
-                await ctx.send("Playlist atualizada com sucesso!\n"
-                    f"\n> _Nome:_ `{playlist_name}`" 
-                    f"\n> _Propriedade:_ **{'Pública' if privacy == 'public' else 'Privado'}**")
+        if len(args) > 0:
+            if args[0] == 'private' or args[0] == 'public':
+                privacy = args[0]
+                playlist_name = " ".join(args[1:len(args)])
             else:
-                await ctx.send("Não existe uma playlist sua com esse nome.")
-        except Exception as error:
-            print(error)
-            await ctx.send("Não foi possível atualizar sua playlist.")
+                privacy = 'public'
+                playlist_name = " ".join(args)
+
+            try:
+                if database.playlistCheckExistence(ctx.guild.id, ctx.author.id, playlist_name):
+                    playlist_name = database.playlistReturnName(ctx.guild.id, ctx.author.id, playlist_name)
+                    database.playlistUpdate(ctx.guild.id, ctx.author.id, playlist_name, privacy)
+                    await ctx.send("Playlist atualizada com sucesso!\n"
+                        f"\n> _Nome:_ `{playlist_name}`" 
+                        f"\n> _Propriedade:_ **{'Pública' if privacy == 'public' else 'Privado'}**")
+                else:
+                    await ctx.send("Não existe uma playlist sua com esse nome.")
+            except Exception as error:
+                print(error)
+                await ctx.send("Não foi possível atualizar sua playlist.")
+        else:
+            await ctx.send("Você não informou o nome da playlist.")
 
     @commands.command()
     async def addtoplaylist(self, ctx, *args):
@@ -82,27 +85,26 @@ class Playlist(commands.Cog):
                             '\n`.addtoplaylist Favorite Songs - Imagine Dragons Believer`')
                 return
 
+
         if database.playlistCheckExistence(ctx.guild.id, ctx.author.id, playlist_name):
             playlist_name = database.playlistReturnName(ctx.guild.id, ctx.author.id, playlist_name)
             songs = await searchSongs(self.client, ctx, search)
             if songs:
-                database.playlistAddTracks(ctx.guild.id, ctx.author.id, playlist_name, str(songs['items']))
+                database.playlistAddTracks(ctx.guild.id, ctx.author.id, playlist_name, songs['items'])
                 if songs['playlist']:
                     embed = discord.Embed(color=ctx.guild.me.top_role.color,
                                     title='**Adicionado a Playlist**',
-                                    description=f"`{len(songs['items'])}` músicas na playlist _{playlist_name}_.  [{ctx.author.mention}]")
+                                    description=f"`{len(songs['items'])}` músicas em *{playlist_name}*.  [{ctx.author.mention}]")
                 else:
                     embed = discord.Embed(color=ctx.guild.me.top_role.color,
                                     title='**Adicionado a Playlist**',
-                                    description=f"[{songs['items'][0]['title']}]({songs['items'][0]['url']}) na playlist _{playlist_name}_.  [{ctx.author.mention}]")
+                                    description=f'[{songs["items"][0]["title"]}]({songs["items"][0]["url"]}) em  *{playlist_name}*.  [{ctx.author.mention}]')
                     
                 await ctx.send(embed=embed)
             else:
                 await ctx.send("Algum erro aconteceu.")
         else:
             await ctx.send("Não existe uma playlist sua com esse nome.")
-        print('\n', playlist_name)
-        print(search)
 
     @commands.command()
     async def savequeuetoplaylist(self, ctx, *args):
