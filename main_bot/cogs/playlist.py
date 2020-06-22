@@ -1,7 +1,6 @@
 import discord
 import re
 import ast
-from .music import queue, queue_shuffled, shuffle_mode
 from .music import searchSongs, addTracksToQueue, PlaySong
 from database import Database
 from discord.ext import commands
@@ -216,7 +215,6 @@ class Playlist(commands.Cog):
         if id != None and id.group(1) != '&':
             userID = id.group(2)
         else:
-
             await ctx.send("O _ID_ de usuário informado não é válido. Verifique novamente.")
             return
 
@@ -226,7 +224,7 @@ class Playlist(commands.Cog):
             await ctx.send(f"Não existe uma playlist do usuário <@{userID}> com esse nome.")
         
         tracks = database.playlistReturnTracks(ctx.guild.id, userID, playlist_name)
-        if tracks['privacy'] == 'public' or ctx.author.id == userID:
+        if tracks['privacy'] == 'public' or ctx.author.id == int(userID):
             if tracks['tracks'] == "":
                 tracks = list(tracks['tracks'])
             else:
@@ -253,18 +251,13 @@ class Playlist(commands.Cog):
 
     @staticmethod
     async def addPlaylistTracksToQueue(client, ctx, tracks, playlist_name):
-        for track in tracks:
-            youtube_video_title = track['title']
-            youtube_video_url = track['url']
-            queue.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
-            if shuffle_mode:
-                queue_shuffled.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
+        
+        await addTracksToQueue(client, ctx, tracks, True)
+
         embed = discord.Embed(color=ctx.guild.me.top_role.color,
                             title='**Adicionado a Fila**',
                             description=f"`{len(tracks)}` músicas da playlist *{playlist_name}*.  [{ctx.author.mention}]")
-
         await ctx.send(embed=embed)
-        print("Added to queue\n")
   
         await PlaySong(ctx, client)
 

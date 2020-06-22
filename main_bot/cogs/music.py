@@ -44,9 +44,21 @@ class Music(commands.Cog):
             await ctx.send("Você não está conectado em nenhum canal de voz.")
             return
 
-        songs = await searchSongs(self.client, ctx, search)
-        if songs:
-            await addTracksToQueue(self.client, ctx, songs['items'], songs['playlist'])
+        tracks = await searchSongs(self.client, ctx, search)
+        if tracks:
+            await addTracksToQueue(self.client, ctx, tracks['items'], tracks['playlist'])
+            
+            if tracks['playlist']:
+                embed = discord.Embed(color=ctx.guild.me.top_role.color,
+                            title='**Adicionado a Fila**',
+                            description=f"`{len(tracks['items'])}` músicas da playlist.  [{ctx.author.mention}]")
+            else:
+                embed = discord.Embed(color=ctx.guild.me.top_role.color,
+                            title='**Adicionado a Fila**',
+                            description=f"[{tracks['items'][0]['title']}]({tracks['items'][0]['url']})  [{ctx.author.mention}]") 
+                
+            await ctx.send(embed=embed)
+            await PlaySong(ctx, self.client)
 
 
     @commands.command(name='queue', aliases=['q'])
@@ -514,17 +526,12 @@ async def searchSongs(client, ctx, search):
     return result
 
 async def addTracksToQueue(client, ctx, tracks, playlist=False):
-    # Adicionar uma função AddToQueue() porque tanto 'Play' quanto 'loadplaylist' em playlists
-    # Usarão a mesma função para tocar música. Eles enviarão apenas uma lista.
     if not playlist:
         youtube_video_title = tracks[0]['title']
         youtube_video_url = tracks[0]['url']
         queue.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
         if shuffle_mode:
             queue_shuffled.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
-        embed = discord.Embed(color=ctx.guild.me.top_role.color,
-                            title='**Adicionado a Fila**',
-                            description=f"[{youtube_video_title}]({youtube_video_url})  [{ctx.author.mention}]")
     else:
         for track in tracks:
             youtube_video_title = track['title']
@@ -532,19 +539,10 @@ async def addTracksToQueue(client, ctx, tracks, playlist=False):
             queue.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
             if shuffle_mode:
                 queue_shuffled.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
-        embed = discord.Embed(color=ctx.guild.me.top_role.color,
-                            title='**Adicionado a Fila**',
-                            description=f"`{len(tracks)}` músicas da playlist.  [{ctx.author.mention}]")
 
-    await ctx.send(embed=embed)
     print("Added to queue\n")
 
-    # Módulo 'ast'
-    x = str(queue)
-    x = ast.literal_eval(x)
-    print(type(x))
-
-    await PlaySong(ctx, client)
+    return
 
 def GetIdAndTitle(url):
     get_title_id = os.popen(f'youtube-dl --default-search "ytsearch" --skip-download --get-title --get-id "{url}"') \
