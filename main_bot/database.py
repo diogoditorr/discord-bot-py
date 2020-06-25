@@ -1,7 +1,7 @@
 import sqlite3
 import ast
 
-class Database:
+class PlaylistDatabase:
     def __init__(self, database):
         self.connection = sqlite3.connect(database)
         self.cursor = self.connection.cursor()
@@ -18,12 +18,12 @@ class Database:
         """)
         self.connection.commit()
 
-    def playlistCreate(self, guild_id, guild_name, user_id, playlist_name, playlist_owner, privacy, songs):
+    def create(self, guild_id, guild_name, user_id, playlist_name, playlist_owner, privacy, songs):
         self.cursor.execute("INSERT INTO playlists VALUES (?,?,?,?,?,?,?)",
         (guild_id, guild_name, user_id, playlist_name, playlist_owner, privacy, songs))
         self.connection.commit()
 
-    def playlistUpdate(self, guild_id, user_id, playlist_name, privacy):
+    def update(self, guild_id, user_id, playlist_name, privacy):
         self.cursor.execute("""
             UPDATE playlists
             SET privacy = ?
@@ -33,7 +33,7 @@ class Database:
         """, (privacy, guild_id, user_id, playlist_name))
         self.connection.commit()
 
-    def playlistDelete(self, guild_id, user_id, playlist_name):
+    def delete(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
             DELETE FROM playlists
             WHERE guild_id = ? AND
@@ -42,8 +42,8 @@ class Database:
         """, (guild_id, user_id, playlist_name))
         self.connection.commit()
 
-    def playlistAddTracks(self, guild_id, user_id, playlist_name, tracks):
-        songs = Database.playlistReturnTracks(self, guild_id, user_id, playlist_name)['tracks']
+    def addTracks(self, guild_id, user_id, playlist_name, tracks):
+        songs = PlaylistDatabase.playlistReturnTracks(self, guild_id, user_id, playlist_name)['tracks']
 
         if songs == "":
             songs = list(songs)
@@ -64,7 +64,7 @@ class Database:
         """, (tracks, guild_id, user_id, playlist_name))
         self.connection.commit()
 
-    def listPlaylistsUser(self, guild_id, user_id):
+    def GetUserPlaylists(self, guild_id, user_id):
         self.cursor.execute("""
             SELECT playlist_name
             FROM playlists
@@ -74,7 +74,7 @@ class Database:
         """, (guild_id, user_id))
         return self.cursor.fetchall()
 
-    def playlistReturnName(self, guild_id, user_id, playlist_name):
+    def returnName(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
             SELECT playlist_name
             FROM playlists
@@ -84,7 +84,7 @@ class Database:
         """, (guild_id, user_id, playlist_name))
         return self.cursor.fetchone()[0]
 
-    def playlistReturnTracks(self, guild_id, user_id, playlist_name):
+    def returnTracks(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
             SELECT privacy, songs
             FROM playlists
@@ -96,7 +96,7 @@ class Database:
         results = self.cursor.fetchone()
         return {'privacy': f'{results[0]}', 'tracks': f'{results[1]}'}
 
-    def playlistCheckExistence(self, guild_id, user_id, playlist_name):
+    def checkExistence(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
             SELECT guild_id, user_id, playlist_name FROM playlists 
             WHERE 

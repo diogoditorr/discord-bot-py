@@ -2,10 +2,10 @@ import discord
 import re
 import ast
 from .music import searchSongs, addTracksToQueue, PlaySong
-from database import Database
+from database import PlaylistDatabase
 from discord.ext import commands
 
-database = Database('settings.db')
+playlistQuery = PlaylistDatabase('guilds_database.db')
 
 
 class Playlist(commands.Cog):
@@ -15,8 +15,6 @@ class Playlist(commands.Cog):
 
     @commands.command()
     async def createplaylist(self, ctx, *args):
-        Playlist.printA()
-
         if len(args) > 0:
             if args[0] == 'private' or args[0] == 'public':
                 privacy = args[0]
@@ -26,8 +24,8 @@ class Playlist(commands.Cog):
                 playlist_name = " ".join(args)
             
             try:
-                if not database.playlistCheckExistence(ctx.guild.id, ctx.author.id, playlist_name):
-                    database.playlistCreate(ctx.guild.id, ctx.guild.name, ctx.author.id, playlist_name, f'{ctx.author.name}#{ctx.author.discriminator}', privacy, "")
+                if not playlistQuery.checkExistence(ctx.guild.id, ctx.author.id, playlist_name):
+                    playlistQuery.create(ctx.guild.id, ctx.guild.name, ctx.author.id, playlist_name, f'{ctx.author.name}#{ctx.author.discriminator}', privacy, "")
                     await ctx.send("Playlist criada com sucesso!\n"
                     f"\n> _Nome:_ `{playlist_name}`" 
                     f"\n> _Propriedade:_ **{'Pública' if privacy == 'public' else 'Privado'}**"
@@ -52,9 +50,9 @@ class Playlist(commands.Cog):
                 playlist_name = " ".join(args)
 
             try:
-                if database.playlistCheckExistence(ctx.guild.id, ctx.author.id, playlist_name):
-                    playlist_name = database.playlistReturnName(ctx.guild.id, ctx.author.id, playlist_name)
-                    database.playlistUpdate(ctx.guild.id, ctx.author.id, playlist_name, privacy)
+                if playlistQuery.checkExistence(ctx.guild.id, ctx.author.id, playlist_name):
+                    playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
+                    playlistQuery.update(ctx.guild.id, ctx.author.id, playlist_name, privacy)
                     await ctx.send("Playlist atualizada com sucesso!\n"
                         f"\n> _Nome:_ `{playlist_name}`" 
                         f"\n> _Propriedade:_ **{'Pública' if privacy == 'public' else 'Privado'}**")
@@ -87,11 +85,11 @@ class Playlist(commands.Cog):
                 return
 
 
-        if database.playlistCheckExistence(ctx.guild.id, ctx.author.id, playlist_name):
-            playlist_name = database.playlistReturnName(ctx.guild.id, ctx.author.id, playlist_name)
+        if playlistQuery.checkExistence(ctx.guild.id, ctx.author.id, playlist_name):
+            playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
             songs = await searchSongs(self.client, ctx, search)
             if songs:
-                database.playlistAddTracks(ctx.guild.id, ctx.author.id, playlist_name, songs['items'])
+                playlistQuery.addTracks(ctx.guild.id, ctx.author.id, playlist_name, songs['items'])
                 if songs['playlist']:
                     embed = discord.Embed(color=ctx.guild.me.top_role.color,
                                     title='**Adicionado a Playlist**',
@@ -128,10 +126,10 @@ class Playlist(commands.Cog):
                 if hyphen != None:
                     self_playlist_name = " ".join(args[0:(args.index(x))])
 
-                    playlist = args[args.index(x)+1:]
+                    afterHyphen = args[args.index(x)+1:]
 
-                    if not len(playlist) == 0:
-                        id = re.match(r"^<?@?([!&]?)([0-9]+)>?$", playlist[0])
+                    if len(afterHyphen) != 0:
+                        id = re.match(r"^<?@?([!&]?)([0-9]+)>?$", afterHyphen[0])
                         if id != None and id.group(1) != '&':
                             userID = id.group(2)
                         else:
@@ -143,8 +141,8 @@ class Playlist(commands.Cog):
                             tracks_start = tracks_option.group(1)
                             tracks_end = tracks_option.group(2)
 
-                            if len(playlist) >= 3:
-                                userID_playlist_name = " ".join(playlist[1:len(playlist)-1])
+                            if len(afterHyphen) >= 3:
+                                userID_playlist_name = " ".join(afterHyphen[1:len(afterHyphen)-1])
                             else:
                                 await ctx.send("Não foi informado nenhuma playlist origem do usuário.")
                                 return
@@ -152,8 +150,8 @@ class Playlist(commands.Cog):
                             tracks_start = 0
                             tracks_end = -1
 
-                            if len(playlist) >= 2:
-                                userID_playlist_name = " ".join(playlist[1:len(playlist)])
+                            if len(afterHyphen) >= 2:
+                                userID_playlist_name = " ".join(afterHyphen[1:len(afterHyphen)])
                             else:
                                 await ctx.send("Não foi informado nenhuma playlist origem do usuário.")
                                 return    
@@ -197,11 +195,11 @@ class Playlist(commands.Cog):
             await ctx.send("O _ID_ de usuário informado não é válido. Verifique novamente.")
             return
 
-        playlists = database.listPlaylistsUser(ctx.guild.id, userID)
+        userPlaylists = playlistQuery.GetUserPlaylists(ctx.guild.id, userID)
 
         msg = f"> Playlists do usuário <@{userID}>:\n"
-        for item in playlists:
-            msg = msg + f"\t**#{playlists.index(item)+1} -** {item[0]}\n"
+        for item in userPlaylists:
+            msg = msg + f"\t**#{userPlaylists.index(item)+1} -** {item[0]}\n"
         
         await ctx.send(msg)
 
@@ -218,12 +216,12 @@ class Playlist(commands.Cog):
             await ctx.send("O _ID_ de usuário informado não é válido. Verifique novamente.")
             return
 
-        if database.playlistCheckExistence(ctx.guild.id, userID, playlist_name):
-            playlist_name = database.playlistReturnName(ctx.guild.id, userID, playlist_name)
+        if playlistQuery.checkExistence(ctx.guild.id, userID, playlist_name):
+            playlist_name = playlistQuery.returnName(ctx.guild.id, userID, playlist_name)
         else:
             await ctx.send(f"Não existe uma playlist do usuário <@{userID}> com esse nome.")
         
-        tracks = database.playlistReturnTracks(ctx.guild.id, userID, playlist_name)
+        tracks = playlistQuery.returnTracks(ctx.guild.id, userID, playlist_name)
         if tracks['privacy'] == 'public' or ctx.author.id == int(userID):
             if tracks['tracks'] == "":
                 tracks = list(tracks['tracks'])
@@ -242,28 +240,24 @@ class Playlist(commands.Cog):
 
     @commands.command()
     async def deleteplaylist(self, ctx, *, playlist_name):
-        if database.playlistCheckExistence(ctx.guild.id, ctx.author.id, playlist_name):
-            playlist_name = database.playlistReturnName(ctx.guild.id, ctx.author.id, playlist_name)
-            database.playlistDelete(ctx.guild.id, ctx.author.id, playlist_name)
+        if playlistQuery.checkExistence(ctx.guild.id, ctx.author.id, playlist_name):
+            playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
+            playlistQuery.delete(ctx.guild.id, ctx.author.id, playlist_name)
             await ctx.send(f"Playlist `{playlist_name}` deletada com sucesso.")
         else:
             await ctx.send("Não existe uma playlist sua com esse nome.")
 
     @staticmethod
     async def addPlaylistTracksToQueue(client, ctx, tracks, playlist_name):
-        
-        await addTracksToQueue(client, ctx, tracks, True)
+
+        await addTracksToQueue(client, ctx, tracks)
 
         embed = discord.Embed(color=ctx.guild.me.top_role.color,
                             title='**Adicionado a Fila**',
                             description=f"`{len(tracks)}` músicas da playlist *{playlist_name}*.  [{ctx.author.mention}]")
         await ctx.send(embed=embed)
   
-        await PlaySong(ctx, client)
-
-    @staticmethod
-    def printA():
-        print('A-A-A-A-A')
+        await PlaySong(client, ctx)
 
 def setup(client):
     client.add_cog(Playlist(client))

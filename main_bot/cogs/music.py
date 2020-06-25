@@ -18,6 +18,7 @@ from googleapiclient.errors import HttpError
 
 queue = []
 queue_shuffled = []
+# change 'song' for 'trackPlaying'
 song = {}
 repeat_mode = 'off'
 shuffle_mode = False
@@ -37,16 +38,13 @@ class Music(commands.Cog):
 
     @commands.command()
     async def play(self, ctx, *, search: str):
-        try:
-            channel = ctx.message.author.voice.channel
-        except AttributeError as error:
-            print(error)
-            await ctx.send("Você não está conectado em nenhum canal de voz.")
+        
+        if await isUserConnectedInVoiceChannel(ctx) == False:
             return
 
         tracks = await searchSongs(self.client, ctx, search)
         if tracks:
-            await addTracksToQueue(self.client, ctx, tracks['items'], tracks['playlist'])
+            await addTracksToQueue(self.client, ctx, tracks['items'])
             
             if tracks['playlist']:
                 embed = discord.Embed(color=ctx.guild.me.top_role.color,
@@ -58,13 +56,15 @@ class Music(commands.Cog):
                             description=f"[{tracks['items'][0]['title']}]({tracks['items'][0]['url']})  [{ctx.author.mention}]") 
                 
             await ctx.send(embed=embed)
-            await PlaySong(ctx, self.client)
+            await PlaySong(self.client, ctx)
 
 
     @commands.command(name='queue', aliases=['q'])
     async def _queue(self, ctx, page=1):
         global queue_shuffled, queue, song
         msg = ''
+
+        print("\nMúsica atual:", song)
 
         if len(queue) > 0 or song:
             if page == 0:
@@ -120,16 +120,16 @@ class Music(commands.Cog):
     async def pause(self, ctx):
         voice = get(self.client.voice_clients, guild=ctx.guild)
 
-        if voice and voice.is_playing():
-            print("Music paused")
-            voice.pause()
-            await ctx.send("A música foi pausada.")
-        else:
-            if voice and voice.is_paused():
+        if voice:
+            if voice.is_playing():
+                print("Music paused")
+                voice.pause()
+                await ctx.send("A música foi pausada.")
+            elif voice.is_paused():
                 await ctx.send("O player já está pausado")
-            else:
-                print("Nenhuma música está sendo tocada")
-                await ctx.send("Nenhuma música está sendo tocada, falha em pausar player.")
+        else:
+            print("Nenhuma música está sendo tocada")
+            await ctx.send("Nenhuma música está sendo tocada, falha em pausar player.")
 
 
     @commands.command(aliases=['unpause'])
@@ -264,290 +264,362 @@ class Music(commands.Cog):
                 await ctx.send("You do not own this bot!")
 
                 
-async def PlaySong(ctx, client):
-    global playing_now_message, song_download_error_message
-    global song_downloaded, song
-    global queue, queue_shuffled
-
-    async def VerifyQueue(ctx):
-        # Coloca a música no final da fila caso esteja repetindo todas as músicas.
-        if repeat_mode == 'all' and song:
-            queue.append(song)
-            if shuffle_mode:
-                queue_shuffled.append(song)
-        await PlaySong(ctx, client)
-
-    # Passa o 'ctx' para 'context' para quando for tocar novamente.
-    context = ctx
+async def PlaySong(client, ctx):
+    global playing_now_message
 
     def PlayAgain(error):
-        nonlocal context
-        coro = VerifyQueue(context)
-        fut = asyncio.run_coroutine_threadsafe(coro, client.loop)
+        coroutine = VerifyQueue(client, ctx)
+        fut = asyncio.run_coroutine_threadsafe(coroutine, client.loop)
         try:
             fut.result()
         except:
             pass
     
-    try:
-        channel = ctx.message.author.voice.channel
-    except AttributeError as error:
-        print(error)
-        await ctx.send("Você não está conectado em nenhum canal de voz.")
+    if await isUserConnectedInVoiceChannel(ctx) == False:
         return
-    voice = get(client.voice_clients, guild=ctx.guild)
 
-    if voice is not None:
-        if voice.channel != channel:
-            await voice.move_to(channel)
+    await connectToUserVoiceChannel(client, ctx)
 
-    try:
-        await channel.connect()
-    except:
-        pass
+    voiceClient = get(client.voice_clients, guild=ctx.guild)
+    if voiceClient:
+        if readyToPlay():
+            if isPlayingOrPaused(voiceClient) == False:
 
-    voice = get(client.voice_clients, guild=ctx.guild)
+                if repeat_mode != 'single' or song_downloaded == False:
+                    selectQueueSongToPlay()
+                    await downloadSong(client, ctx)
 
-    if voice:
-        if not len(queue) == 0 or repeat_mode == 'single' or repeat_mode == 'all':
-            if not (voice.is_playing() or voice.is_paused()):
-
-                if not repeat_mode == 'single' or not song_downloaded:
-                    if not shuffle_mode:
-                        song = queue.pop(0)
-                    else:
-                        song = queue_shuffled.pop(0)
-                        try:
-                            queue.remove(song)
-                        except ValueError:
-                            pass
-
-                    # Define as opções de músicas
-                    ydl_opts = {
-                        'format': 'bestaudio/best',
-                        'quiet': True,
-                        'postprocessors': [{
-                            'key': 'FFmpegExtractAudio',
-                            'preferredcodec': 'mp3',
-                            'preferredquality': '192',
-                        }],
-                    }
-
-                    # Faz o download da música
-                    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                        print("Downloading song now\n")
-                        try:
-                            ydl.download([song['url']])
-                        except Exception as error:
-                            print(error)
-                            song_download_error_message = await ctx.send(
-                                            f"Ocorreu um problema na tentativa de tocar **{song['title']}**\n"
-                                            "*Tocando próxima música.*")
-                            await PlaySong(ctx, client)
-
-                    # Remove a música antiga
-                    old_song = os.path.isfile("song.mp3")
-                    if old_song:
-                        os.remove("song.mp3")
-
-                    # Renomeia o nome do arquivo .mp3
-                    for file in os.listdir("./"):
-                        if file.endswith('.mp3'):
-                            name = file
-                            print(f'Renamed File: {file}\n')
-                            os.rename(file, "song.mp3")
-
-                    song_downloaded = True
-
-                # Toca a música utilizando o bot no discord
-                voice.play(discord.FFmpegPCMAudio('song.mp3'), after=PlayAgain)
-                voice.source = discord.PCMVolumeTransformer(voice.source)
-                voice.source.volume = 0.25
+                voiceClient.play(discord.FFmpegPCMAudio('song.mp3'), after=PlayAgain)
+                voiceClient.source = discord.PCMVolumeTransformer(voiceClient.source)
+                voiceClient.source.volume = 0.25
 
                 embed = discord.Embed(color=ctx.guild.me.top_role.color, title="**Playing Now**",
                                     description=f"[{song['title']}]({song['url']}) [<@{song['user_id']}>]")
-                try:
-                    await playing_now_message.delete()
-                except:
-                    pass
-
-                try:
-                    await song_download_error_message.delete()
-                except:
-                    pass
-
+                await deletePlayerMessages()
                 await asyncio.sleep(1)
                 playing_now_message = await ctx.channel.send(embed=embed)
                 print("playing\n")
         else:
-            try:
-                await playing_now_message.delete()
-            except:
-                pass
+            await deletePlayerMessages()
             await asyncio.sleep(1)
             await ctx.send("Acabou as músicas da fila. Utilize `.play <url ou nome da musica>` para tocar mais.")
 
-async def searchSongs(client, ctx, search):
-    result = {'playlist': False, 'items': []}
 
-    if search.startswith('https://'):
-        link = re.match(r"^https://www\.youtube\.com/(watch|playlist)\?(v|list)=([0-9A-Za-z_-]+).*$", search)
-        if link is not None:
-            link = list(link.groups())
-
-            if link[0] == 'watch':
-                video = GetIdAndTitle(link[2])
-                youtube_video_title = video[0]
-                youtube_video_url = f'https://www.youtube.com/watch?v={video[1]}'
-                result['items'].append({'title': youtube_video_title, 'url': youtube_video_url})
-
-            elif link[0] == 'playlist':
-                result['playlist'] = True
-                loading = await ctx.send("Baixando dados da playlist.")
-
-                try:
-                    youtube = discovery.build('youtube', 'v3', developerKey=youtube_api_key)
-
-                    playlistitems_list_request = youtube.playlistItems().list(
-                        playlistId=link[2],
-                        part='snippet',
-                        maxResults=50)
-
-                    while playlistitems_list_request:
-                        await asyncio.sleep(1.5)
-                        playlistitems_list_response = playlistitems_list_request.execute()
-
-                        # Print information about each video.
-                        for song in playlistitems_list_response['items']:
-                            youtube_video_url = f"https://www.youtube.com/watch?v={song['snippet']['resourceId']['videoId']}"
-                            youtube_video_title = song['snippet']['title']
-                            result['items'].append({'title': youtube_video_title, 'url': youtube_video_url})
-
-                        # Faz uma próxima request da próxima página da playlist. Retorna None caso não tenha.
-                        playlistitems_list_request = youtube.playlistItems().list_next(
-                            playlistitems_list_request,
-                            previous_response=playlistitems_list_response)
-
-                    await loading.delete()
-                except:
-                    await loading.delete()
-                    await ctx.send("Algum problema ocorreu enquanto tentei pegar as músicas.\n"
-                                "Verifique se a URL está correta ou se existe algum vídeo indisponível "
-                                "dentro da playlist.")
-                    return False
-            else:
-                await ctx.send("Esse link não é válido. Tente novamente.")
-                return False
-
-        else:
-            # outra opção como youtube.be\id-música
-            return False
-    else:
-        try:
-            youtube = discovery.build('youtube', 'v3', developerKey=youtube_api_key)
-
-            request = youtube.search().list(q=search, part='snippet', type='video', maxResults=5)
-            response = request.execute()
-
-            msg = '**Selecione uma faixa clicando no emoji correspondente.**\n'
-
-            show_information = await ctx.send(f'Mostrando músicas com o termo `{search}`\n\n')
-            for x in range(0, len(response['items'])):
-
-                # Pega a 'duração' do vídeo
-                video = youtube.videos().list(id=response['items'][x]['id']['videoId'], part='contentDetails').execute()
-                duration = list(
-                    re.match(r'^PT(\d+H)?(\d+M)?(\d+S)?$', video['items'][0]['contentDetails']['duration']).groups())
-
-                # Transforma: PT#H#M#S em H:M:S, por exemplo: PT4M2S -> 00:04:02
-                if duration[0] is None:
-                    duration[0] = ''
-                else:
-                    duration[0] = duration[0].replace('H', ':')
-                    if len(duration[0]) < 3:
-                        duration[0] = '0' + duration[0]
-
-                if duration[1] is None:
-                    duration[1] = '00:'
-                else:
-                    duration[1] = duration[1].replace('M', ':')
-                    if len(duration[1]) < 3:
-                        duration[1] = '0' + duration[1]
-
-                if duration[2] is None:
-                    duration[2] = '00'
-                else:
-                    duration[2] = duration[2].replace('S', '')
-                    if len(duration[2]) < 2:
-                        duration[2] = '0' + duration[2]
-
-                video_duration = duration[0] + duration[1] + duration[2]
-                video_title = response['items'][x]['snippet']['title']
-
-                msg = msg + f"**{(x + 1)})** {video_title} - ({video_duration})\n"
-
-            message = await ctx.send(msg)
-            emoji = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
-            await message.add_reaction(emoji[0])
-            await message.add_reaction(emoji[1])
-            await message.add_reaction(emoji[2])
-            await message.add_reaction(emoji[3])
-            await message.add_reaction(emoji[4])
-
-            def check(reaction, user):
-                return user == ctx.author and (str(reaction.emoji) == emoji[0]
-                                            or str(reaction.emoji) == emoji[1]
-                                            or str(reaction.emoji) == emoji[2]
-                                            or str(reaction.emoji) == emoji[3]
-                                            or str(reaction.emoji) == emoji[4])
-
-            try:
-                reaction, user = await client.wait_for('reaction_add', timeout=60, check=check)
-                await show_information.delete()
-                await message.delete()
-                for x in range(0, len(emoji)):
-                    if str(reaction.emoji) == emoji[x]:
-                        youtube_video_title = response['items'][x]['snippet']['title']
-                        youtube_video_url = f'https://www.youtube.com/watch?v={response["items"][x]["id"]["videoId"]}'
-                        result['items'].append({'title': youtube_video_title, 'url': youtube_video_url})
-                        break
-
-            except asyncio.TimeoutError:
-                error = await ctx.send("Você demorou muito.")
-
-                await error.delete(delay=5)
-                await show_information.delete()
-                return False
-        except HttpError:
-            await ctx.send("O limite de requisições foi atingido. Não é possível procurar por uma música usando Youtube"
-                        "Data API.")
-            return False
-
-    return result
-
-async def addTracksToQueue(client, ctx, tracks, playlist=False):
-    if not playlist:
-        youtube_video_title = tracks[0]['title']
-        youtube_video_url = tracks[0]['url']
-        queue.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
+# Coloca a música no final da fila caso esteja repetindo todas as músicas.
+async def VerifyQueue(client, ctx):
+    if repeat_mode == 'all' and song:
+        queue.append(song)
         if shuffle_mode:
-            queue_shuffled.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
+            queue_shuffled.append(song)
+    await PlaySong(client, ctx)
+
+
+async def isUserConnectedInVoiceChannel(ctx):
+    try:
+        if ctx.message.author.voice.channel:
+            return True
+    except AttributeError as error:
+        print(error)
+        await ctx.send("Você não está conectado em nenhum canal de voz.")
+        return False
+
+
+async def connectToUserVoiceChannel(client, ctx):
+    userChannel = ctx.message.author.voice.channel
+    voiceClient = get(client.voice_clients, guild=ctx.guild)
+
+    if voiceClient != None and voiceClient.channel != userChannel:
+        await voiceClient.move_to(userChannel)
+
+    try:
+        await userChannel.connect()
+    except:
+        pass
+
+
+def readyToPlay():
+    if len(queue) != 0 or repeat_mode == 'single' or repeat_mode == 'all':
+        return True
     else:
-        for track in tracks:
-            youtube_video_title = track['title']
-            youtube_video_url = track['url']
-            queue.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
-            if shuffle_mode:
-                queue_shuffled.append({'title': youtube_video_title, 'url': youtube_video_url, 'user_name': ctx.author.name, 'user_id': ctx.author.id})
+        return False
+
+
+def isPlayingOrPaused(voiceClient):
+    if voiceClient.is_playing() or voiceClient.is_paused():
+        return True
+    else:
+        return False
+
+
+def selectQueueSongToPlay():
+    global song, shuffle_mode, queue, queue_shuffled
+    if not shuffle_mode:
+        song = queue.pop(0)
+    else:
+        song = queue_shuffled.pop(0)
+        try:
+            queue.remove(song)
+        except ValueError:
+            pass
+
+
+async def downloadSong(client, ctx):
+    global song_download_error_message, song_downloaded
+
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+    }
+
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        print("Downloading song now\n")
+        try:
+            ydl.download([song['url']])
+            song_downloaded = True
+        except Exception as error:
+            print(error)
+            song_download_error_message = await ctx.send(
+                            f"Ocorreu um problema na tentativa de tocar **{song['title']}**\n"
+                            "*Tocando próxima música.*")
+            await PlaySong(client, ctx)
+
+    RemoveOldSong()
+    RenameNewSong()
+
+
+def RemoveOldSong():
+    old_song = os.path.isfile("song.mp3")
+    if old_song:
+        os.remove("song.mp3")
+
+
+def RenameNewSong():
+    for file in os.listdir("./"):
+        if file.endswith('.mp3'):
+            name = file
+            print(f'Renamed File: {file}\n')
+            os.rename(file, "song.mp3")
+
+
+async def deletePlayerMessages():
+    try:
+        await playing_now_message.delete()
+    except:
+        pass
+
+    try:
+        await song_download_error_message.delete()
+    except:
+        pass
+
+
+async def searchSongs(client, ctx, search):
+    # Quebrar linhas e separar funções
+ 
+    if search.startswith('https://'):
+        tracks = await searchTracksUsingURL(ctx, search)
+    else:
+        tracks = await searchTracksUsingKeyWord(client, ctx, search)
+
+    return tracks
+
+
+async def searchTracksUsingURL(ctx, search):
+    results = {'playlist': False, 'items': []}
+
+    link = re.match(r"^https://www\.youtube\.com/(?P<state>watch|playlist)\?(v|list)=(?P<id>[0-9A-Za-z_-]+).*$", search)
+    if link != None:
+        link = link.groupdict()
+
+        print("\n", link, "\n")
+        if link['state'] == 'watch':
+            results['items'].append(GetVideoTitleAndURL(link['id']))
+
+        elif link['state'] == 'playlist':
+            result['playlist'] = True
+            playlistItems = await searchTracksThroughPlaylistItems(ctx, link['id'])
+            
+            if playlistItems:
+                for item in playlistItems:
+                    results['items'].append(item)
+        else:
+            await ctx.send("Esse link não é válido. Tente novamente.")
+
+    else:
+        # outra opção como youtube.be\id-música
+        return False
+
+    if len(results['items']) > 0:
+        return results
+    else:
+        return False
+
+
+async def searchTracksThroughPlaylistItems(ctx, id):
+    playlistItems = []
+    loading = await ctx.send("Baixando dados da playlist.")
+
+    try:
+        youtube = discovery.build('youtube', 'v3', developerKey=youtube_api_key)
+
+        playlistitems_list_request = youtube.playlistItems().list(
+            playlistId=id,
+            part='snippet',
+            maxResults=50)
+
+        while playlistitems_list_request:
+            await asyncio.sleep(1.5)
+            playlistitems_list_response = playlistitems_list_request.execute()
+
+            # Print information about each video.
+            for song in playlistitems_list_response['items']:
+                youtube_video_url = f"https://www.youtube.com/watch?v={song['snippet']['resourceId']['videoId']}"
+                youtube_video_title = song['snippet']['title']
+                playlistItems.append({'title': youtube_video_title, 'url': youtube_video_url})
+
+            # Faz uma próxima request da próxima página da playlist. Retorna None caso não tenha.
+            playlistitems_list_request = youtube.playlistItems().list_next(
+                playlistitems_list_request,
+                previous_response=playlistitems_list_response)
+
+        await loading.delete()
+        return playlistItems
+    except:
+        await loading.delete()
+        await ctx.send("Algum problema ocorreu enquanto tentei pegar as músicas.\n"
+                    "Verifique se a URL está correta ou se existe algum vídeo indisponível "
+                    "dentro da playlist.")
+        return False
+
+
+async def searchTracksUsingKeyWord(client, ctx, search):
+    results = {'playlist': False, 'items': []}
+
+    try:
+        youtube = discovery.build('youtube', 'v3', developerKey=youtube_api_key)
+
+        request = youtube.search().list(q=search, part='snippet', type='video', maxResults=5)
+        response = request.execute()
+
+        searchingTerm_message = await ctx.send(f'Mostrando músicas com o termo `{search}`\n\n')
+        msg = await constructSearchingSongMessage(ctx, response, youtube)
+
+        track = await selectSearchingSongToPlay(client, ctx, response, msg, searchingTerm_message)
+        if track:
+            results['items'].append(track)
+    except HttpError:
+        await ctx.send("O limite de requisições foi atingido. Não é possível procurar por uma música usando Youtube"
+                    "Data API.")
+    
+    if len(results['items']) > 0:
+        return results
+    else:
+        return False
+
+
+async def constructSearchingSongMessage(ctx, response, youtube_api):
+
+    msg = '**Selecione uma faixa clicando no emoji correspondente.**\n'
+    
+    for x in range(0, len(response['items'])):
+
+        # Pega a 'duração' do vídeo
+        video = youtube_api.videos().list(id=response['items'][x]['id']['videoId'], part='contentDetails').execute()
+        duration = list(
+            re.match(r'^PT(\d+H)?(\d+M)?(\d+S)?$', video['items'][0]['contentDetails']['duration']).groups())
+
+        video_duration = transformVideoDuration(duration)
+        video_title = response['items'][x]['snippet']['title']
+
+        msg = msg + f"**{(x + 1)})** {video_title} - ({video_duration})\n"
+    
+    return msg
+
+
+def transformVideoDuration(duration):
+    # Transforma: PT#H#M#S em H:M:S, por exemplo: PT4M2S -> 00:04:02
+    if duration[0] is None:
+        duration[0] = ''
+    else:
+        duration[0] = duration[0].replace('H', ':')
+        if len(duration[0]) < 3:
+            duration[0] = '0' + duration[0]
+
+    if duration[1] is None:
+        duration[1] = '00:'
+    else:
+        duration[1] = duration[1].replace('M', ':')
+        if len(duration[1]) < 3:
+            duration[1] = '0' + duration[1]
+
+    if duration[2] is None:
+        duration[2] = '00'
+    else:
+        duration[2] = duration[2].replace('S', '')
+        if len(duration[2]) < 2:
+            duration[2] = '0' + duration[2]
+    
+    return duration[0] + duration[1] + duration[2]
+
+
+async def selectSearchingSongToPlay(client, ctx, response, msg, searchingTerm_message):
+    select_song_message = await ctx.send(msg)
+    emoji = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
+    await select_song_message.add_reaction(emoji[0])
+    await select_song_message.add_reaction(emoji[1])
+    await select_song_message.add_reaction(emoji[2])
+    await select_song_message.add_reaction(emoji[3])
+    await select_song_message.add_reaction(emoji[4])
+
+    def check(reaction, user):
+        return reaction.message.id == select_song_message.id \
+            and user == ctx.author \
+            and (str(reaction.emoji) == emoji[0]
+            or str(reaction.emoji) == emoji[1]
+            or str(reaction.emoji) == emoji[2]
+            or str(reaction.emoji) == emoji[3]
+            or str(reaction.emoji) == emoji[4])
+
+    try:
+        reaction, user = await client.wait_for('reaction_add', timeout=60, check=check)
+        await searchingTerm_message.delete()
+        await select_song_message.delete()
+        for x in range(0, len(emoji)):
+            if str(reaction.emoji) == emoji[x]:
+                youtube_video_title = response['items'][x]['snippet']['title']
+                youtube_video_url = f'https://www.youtube.com/watch?v={response["items"][x]["id"]["videoId"]}'
+                return {'title': youtube_video_title, 'url': youtube_video_url}
+
+    except asyncio.TimeoutError:
+        error = await ctx.send("Você demorou muito.")
+        await error.delete(delay=5)
+        await searchingTerm_message.delete()
+        return False
+
+
+async def addTracksToQueue(client, ctx, tracks):
+    for track in tracks:
+        queue.append({'title': track['title'], 'url': track['url'], 'user_name': ctx.author.name, 'user_id': ctx.author.id})
+        if shuffle_mode:
+            queue_shuffled.append({'title': track['title'], 'url': track['url'], 'user_name': ctx.author.name, 'user_id': ctx.author.id})
 
     print("Added to queue\n")
-
     return
 
-def GetIdAndTitle(url):
-    get_title_id = os.popen(f'youtube-dl --default-search "ytsearch" --skip-download --get-title --get-id "{url}"') \
+
+def GetVideoTitleAndURL(id):
+    get_video_title = os.popen(f'youtube-dl --default-search "ytsearch" --skip-download --get-title "{id}"') \
         .read().split(sep='\n')
-    return get_title_id
+
+    youtube_video_title = get_video_title[0]
+    youtube_video_url = f'https://www.youtube.com/watch?v={id}'
+    return {'title': youtube_video_title, 'url': youtube_video_url}
+
 
 def setup(client):
     client.add_cog(Music(client))

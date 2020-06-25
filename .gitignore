@@ -16,5 +16,5 @@ __pycache__
 
 # Files Created
 discord.log
-init.bat
+*.bat
 *.db
