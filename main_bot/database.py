@@ -13,14 +13,15 @@ class PlaylistDatabase:
                 playlist_name VARCHAR(50) NOT NULL,
                 playlist_owner VARCHAR(60) NOT NULL,
                 privacy VARCHAR(7) NOT NULL,
-                songs TEXT
+                length_songs INT NOT NULL,
+                songs TEXT NOT NULL
             )
         """)
         self.connection.commit()
 
-    def create(self, guild_id, guild_name, user_id, playlist_name, playlist_owner, privacy, songs):
-        self.cursor.execute("INSERT INTO playlists VALUES (?,?,?,?,?,?,?)",
-        (guild_id, guild_name, user_id, playlist_name, playlist_owner, privacy, songs))
+    def create(self, guild_id, guild_name, user_id, playlist_name, playlist_owner, privacy, songs=[]):
+        self.cursor.execute("INSERT INTO playlists VALUES (?,?,?,?,?,?,?,?)",
+        (guild_id, guild_name, user_id, playlist_name, playlist_owner, privacy, len(songs), str(songs)))
         self.connection.commit()
 
     def update(self, guild_id, user_id, playlist_name, privacy):
@@ -42,31 +43,26 @@ class PlaylistDatabase:
         """, (guild_id, user_id, playlist_name))
         self.connection.commit()
 
-    def addTracks(self, guild_id, user_id, playlist_name, tracks):
-        songs = PlaylistDatabase.playlistReturnTracks(self, guild_id, user_id, playlist_name)['tracks']
+    def addSongs(self, guild_id, user_id, playlist_name, new_songs):
+        new_playlist_songs = PlaylistDatabase.returnSongs(self, guild_id, user_id, playlist_name)['songs']
 
-        if songs == "":
-            songs = list(songs)
-        else:
-            songs = ast.literal_eval(songs)
+        new_playlist_songs = ast.literal_eval(new_playlist_songs)
         
-        for track in tracks:
-            songs.append(track)
-
-        tracks = str(songs)
+        for song in new_songs:
+            new_playlist_songs.append(song)
 
         self.cursor.execute("""
             UPDATE playlists
-            SET songs = ?
+            SET songs = ?, length_songs = ?
             WHERE guild_id = ? AND
             user_id = ? AND
             playlist_name = ?
-        """, (tracks, guild_id, user_id, playlist_name))
+        """, (str(new_playlist_songs), len(new_playlist_songs), guild_id, user_id, playlist_name))
         self.connection.commit()
 
     def GetUserPlaylists(self, guild_id, user_id):
         self.cursor.execute("""
-            SELECT playlist_name
+            SELECT playlist_name, length_songs
             FROM playlists
             WHERE guild_id = ? AND
             user_id = ?
@@ -84,7 +80,7 @@ class PlaylistDatabase:
         """, (guild_id, user_id, playlist_name))
         return self.cursor.fetchone()[0]
 
-    def returnTracks(self, guild_id, user_id, playlist_name):
+    def returnSongs(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
             SELECT privacy, songs
             FROM playlists
@@ -94,7 +90,7 @@ class PlaylistDatabase:
         """, (guild_id, user_id, playlist_name))
 
         results = self.cursor.fetchone()
-        return {'privacy': f'{results[0]}', 'tracks': f'{results[1]}'}
+        return {'privacy': f'{results[0]}', 'songs': f'{results[1]}'}
 
     def checkExistence(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""

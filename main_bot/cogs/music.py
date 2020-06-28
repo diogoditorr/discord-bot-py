@@ -18,8 +18,7 @@ from googleapiclient.errors import HttpError
 
 queue = []
 queue_shuffled = []
-# change 'song' for 'trackPlaying'
-song = {}
+songPlayingNow = {}
 repeat_mode = 'off'
 shuffle_mode = False
 song_downloaded = False
@@ -37,23 +36,23 @@ class Music(commands.Cog):
         self.client = client
 
     @commands.command()
-    async def play(self, ctx, *, search: str):
+    async def play(self, ctx, *, search):
         
         if await isUserConnectedInVoiceChannel(ctx) == False:
             return
 
-        tracks = await searchSongs(self.client, ctx, search)
-        if tracks:
-            await addTracksToQueue(self.client, ctx, tracks['items'])
+        songs = await searchSongs(self.client, ctx, search)
+        if songs:
+            await addSongsToQueue(self.client, ctx, songs['items'])
             
-            if tracks['playlist']:
+            if songs['playlist']:
                 embed = discord.Embed(color=ctx.guild.me.top_role.color,
                             title='**Adicionado a Fila**',
-                            description=f"`{len(tracks['items'])}` músicas da playlist.  [{ctx.author.mention}]")
+                            description=f"`{len(songs['items'])}` músicas da playlist.  [{ctx.author.mention}]")
             else:
                 embed = discord.Embed(color=ctx.guild.me.top_role.color,
                             title='**Adicionado a Fila**',
-                            description=f"[{tracks['items'][0]['title']}]({tracks['items'][0]['url']})  [{ctx.author.mention}]") 
+                            description=f"[{songs['items'][0]['title']}]({songs['items'][0]['url']})  [{ctx.author.mention}]") 
                 
             await ctx.send(embed=embed)
             await PlaySong(self.client, ctx)
@@ -61,22 +60,22 @@ class Music(commands.Cog):
 
     @commands.command(name='queue', aliases=['q'])
     async def _queue(self, ctx, page=1):
-        global queue_shuffled, queue, song
+        global queue_shuffled, queue
         msg = ''
 
-        print("\nMúsica atual:", song)
+        print("Música atual:", songPlayingNow, "\n")
 
-        if len(queue) > 0 or song:
+        if len(queue) > 0 or songPlayingNow:
             if page == 0:
                 page = 1
             elif page < 0:
                 await ctx.send("As páginas só podem ser mostradas com números positivos!")
                 return
 
-            tracks_number = 10  # Quantas músicas aparecerão por página
+            SONGS_PER_PAGE = 10  # Quantas músicas aparecerão por página
 
-            max_pages = len(queue) // tracks_number
-            if len(queue) % tracks_number > 0:
+            max_pages = len(queue) // SONGS_PER_PAGE
+            if len(queue) % SONGS_PER_PAGE > 0:
                 max_pages = max_pages + 1
                 if page > max_pages:
                     page = max_pages
@@ -86,9 +85,9 @@ class Music(commands.Cog):
                 page = 1
 
             if not shuffle_mode:
-                queue_list = queue[tracks_number * (page - 1):tracks_number * page]
+                queue_list = queue[SONGS_PER_PAGE * (page - 1):SONGS_PER_PAGE * page]
             else:
-                queue_list = queue_shuffled[tracks_number * (page - 1):tracks_number * page]
+                queue_list = queue_shuffled[SONGS_PER_PAGE * (page - 1):SONGS_PER_PAGE * page]
                 msg = 'Mostrando playlist embaralhada\n'
 
             if repeat_mode == 'off':
@@ -100,18 +99,18 @@ class Music(commands.Cog):
 
             msg = msg + f'Página **{page}** de **{max_pages}**\n\n'
 
-            voice = get(self.client.voice_clients, guild=ctx.guild)
+            voiceClient = get(self.client.voice_clients, guild=ctx.guild)
 
-            i = tracks_number * (page - 1)
+            index = SONGS_PER_PAGE * (page - 1)
             if page == 1:
-                if voice and voice.is_paused():
-                    msg = msg + f'**⏸ {song["title"]}** - *[@{song["user_name"]}]*\n'
+                if voiceClient and voiceClient.is_paused():
+                    msg = msg + f'**⏸ {songPlayingNow["title"]}** - *[@{songPlayingNow["user_name"]}]*\n'
                 else:
-                    msg = msg + f'**▶ {song["title"]}** - *[@{song["user_name"]}]*\n'
+                    msg = msg + f'**▶ {songPlayingNow["title"]}** - *[@{songPlayingNow["user_name"]}]*\n'
 
-            for track in queue_list:
-                i = i + 1
-                msg = msg + f'`[{i}]` **{track["title"]}** - *[@{track["user_name"]}]*\n'
+            for song in queue_list:
+                index = index + 1
+                msg = msg + f'`[{index}]` **{song["title"]}** - *[@{song["user_name"]}]*\n'
 
             await ctx.send(msg)
 
@@ -169,7 +168,7 @@ class Music(commands.Cog):
         global shuffle_mode
         global queue_shuffled
 
-        if len(queue) > 0 or song:
+        if len(queue) > 0 or songPlayingNow:
             if not shuffle_mode:
                 shuffle_mode = True
                 queue_shuffled = random.sample(queue, len(queue))
@@ -199,7 +198,7 @@ class Music(commands.Cog):
 
         queue.clear()
         queue_shuffled.clear()
-        song.clear()
+        songPlayingNow.clear()
         song_downloaded = False
         shuffle_mode = False
         repeat_mode = 'off'
@@ -218,21 +217,21 @@ class Music(commands.Cog):
     async def join(self, ctx):
         top_role = ctx.guild.me.top_role
         channel = ctx.message.author.voice.channel
-        voice = get(self.client.voice_clients, guild=ctx.guild)
+        voiceClient = get(self.client.voice_clients, guild=ctx.guild)
 
-        if voice and voice.is_connected():
-            if voice.channel != channel:
-                await voice.move_to(channel)
+        if voiceClient and voiceClient.is_connected():
+            if voiceClient.channel != channel:
+                await voiceClient.move_to(channel)
         else:
             await channel.connect()
 
-        if not voice is None:
-            await voice.disconnect()
+        if not voiceClient is None:
+            await voiceClient.disconnect()
 
-        voice = get(self.client.voice_clients, guild=ctx.guild)
-        if voice and voice.is_connected():
-            if voice.channel != channel:
-                await voice.move_to(channel)
+        voiceClient = get(self.client.voice_clients, guild=ctx.guild)
+        if voiceClient and voiceClient.is_connected():
+            if voiceClient.channel != channel:
+                await voiceClient.move_to(channel)
         else:
             await channel.connect()
 
@@ -263,9 +262,31 @@ class Music(commands.Cog):
             else:
                 await ctx.send("You do not own this bot!")
 
+    @commands.command()
+    async def playnext(self, ctx, *, search):
+
+        if await isUserConnectedInVoiceChannel(ctx) == False:
+            return
+
+        songs = await searchSongs(self.client, ctx, search)
+        if songs:
+            await addSongsToQueueToPlayNext(self.client, ctx, songs['items'])
+            
+            if songs['playlist']:
+                embed = discord.Embed(color=ctx.guild.me.top_role.color,
+                            title='**Adicionado ao Começo da Fila**',
+                            description=f"`{len(songs['items'])}` músicas da playlist.  [{ctx.author.mention}]")
+            else:
+                embed = discord.Embed(color=ctx.guild.me.top_role.color,
+                            title='**Adicionado ao Começo da Fila**',
+                            description=f"[{songs['items'][0]['title']}]({songs['items'][0]['url']})  [{ctx.author.mention}]") 
+                
+            await ctx.send(embed=embed)
+            await PlaySong(self.client, ctx)
+
                 
 async def PlaySong(client, ctx):
-    global playing_now_message
+    global playing_now_message, song_downloaded
 
     def PlayAgain(error):
         coroutine = VerifyQueue(client, ctx)
@@ -294,7 +315,7 @@ async def PlaySong(client, ctx):
                 voiceClient.source.volume = 0.25
 
                 embed = discord.Embed(color=ctx.guild.me.top_role.color, title="**Playing Now**",
-                                    description=f"[{song['title']}]({song['url']}) [<@{song['user_id']}>]")
+                                    description=f"[{songPlayingNow['title']}]({songPlayingNow['url']}) [<@{songPlayingNow['user_id']}>]")
                 await deletePlayerMessages()
                 await asyncio.sleep(1)
                 playing_now_message = await ctx.channel.send(embed=embed)
@@ -303,14 +324,16 @@ async def PlaySong(client, ctx):
             await deletePlayerMessages()
             await asyncio.sleep(1)
             await ctx.send("Acabou as músicas da fila. Utilize `.play <url ou nome da musica>` para tocar mais.")
+            songPlayingNow.clear()
+            song_downloaded = False
 
 
 # Coloca a música no final da fila caso esteja repetindo todas as músicas.
 async def VerifyQueue(client, ctx):
-    if repeat_mode == 'all' and song:
-        queue.append(song)
+    if repeat_mode == 'all' and songPlayingNow:
+        queue.append(songPlayingNow)
         if shuffle_mode:
-            queue_shuffled.append(song)
+            queue_shuffled.append(songPlayingNow)
     await PlaySong(client, ctx)
 
 
@@ -352,13 +375,13 @@ def isPlayingOrPaused(voiceClient):
 
 
 def selectQueueSongToPlay():
-    global song, shuffle_mode, queue, queue_shuffled
+    global songPlayingNow, shuffle_mode, queue, queue_shuffled
     if not shuffle_mode:
-        song = queue.pop(0)
+        songPlayingNow = queue.pop(0)
     else:
-        song = queue_shuffled.pop(0)
+        songPlayingNow = queue_shuffled.pop(0)
         try:
-            queue.remove(song)
+            queue.remove(songPlayingNow)
         except ValueError:
             pass
 
@@ -379,12 +402,12 @@ async def downloadSong(client, ctx):
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         print("Downloading song now\n")
         try:
-            ydl.download([song['url']])
+            ydl.download([songPlayingNow['url']])
             song_downloaded = True
         except Exception as error:
             print(error)
             song_download_error_message = await ctx.send(
-                            f"Ocorreu um problema na tentativa de tocar **{song['title']}**\n"
+                            f"Ocorreu um problema na tentativa de tocar **{songPlayingNow['title']}**\n"
                             "*Tocando próxima música.*")
             await PlaySong(client, ctx)
 
@@ -422,14 +445,14 @@ async def searchSongs(client, ctx, search):
     # Quebrar linhas e separar funções
  
     if search.startswith('https://'):
-        tracks = await searchTracksUsingURL(ctx, search)
+        songs = await searchSongsUsingURL(ctx, search)
     else:
-        tracks = await searchTracksUsingKeyWord(client, ctx, search)
+        songs = await searchSongsUsingKeyWord(client, ctx, search)
 
-    return tracks
+    return songs
 
 
-async def searchTracksUsingURL(ctx, search):
+async def searchSongsUsingURL(ctx, search):
     results = {'playlist': False, 'items': []}
 
     link = re.match(r"^https://www\.youtube\.com/(?P<state>watch|playlist)\?(v|list)=(?P<id>[0-9A-Za-z_-]+).*$", search)
@@ -441,8 +464,8 @@ async def searchTracksUsingURL(ctx, search):
             results['items'].append(GetVideoTitleAndURL(link['id']))
 
         elif link['state'] == 'playlist':
-            result['playlist'] = True
-            playlistItems = await searchTracksThroughPlaylistItems(ctx, link['id'])
+            results['playlist'] = True
+            playlistItems = await searchSongsThroughPlaylistItems(ctx, link['id'])
             
             if playlistItems:
                 for item in playlistItems:
@@ -460,7 +483,16 @@ async def searchTracksUsingURL(ctx, search):
         return False
 
 
-async def searchTracksThroughPlaylistItems(ctx, id):
+def GetVideoTitleAndURL(id):
+    get_video_title = os.popen(f'youtube-dl --default-search "ytsearch" --skip-download --get-title "/{id}"') \
+        .read().split(sep='\n')
+
+    youtube_video_title = get_video_title[0]
+    youtube_video_url = f'https://www.youtube.com/watch?v={id}'
+    return {'title': youtube_video_title, 'url': youtube_video_url}
+
+
+async def searchSongsThroughPlaylistItems(ctx, id):
     playlistItems = []
     loading = await ctx.send("Baixando dados da playlist.")
 
@@ -497,21 +529,21 @@ async def searchTracksThroughPlaylistItems(ctx, id):
         return False
 
 
-async def searchTracksUsingKeyWord(client, ctx, search):
+async def searchSongsUsingKeyWord(client, ctx, search):
     results = {'playlist': False, 'items': []}
 
     try:
         youtube = discovery.build('youtube', 'v3', developerKey=youtube_api_key)
 
-        request = youtube.search().list(q=search, part='snippet', type='video', maxResults=5)
-        response = request.execute()
+        youtube_api_request = youtube.search().list(q=search, part='snippet', type='video', maxResults=5)
+        foundSongs = youtube_api_request.execute()
 
         searchingTerm_message = await ctx.send(f'Mostrando músicas com o termo `{search}`\n\n')
-        msg = await constructSearchingSongMessage(ctx, response, youtube)
+        select_song_message = await constructSearchingSongMessage(ctx, foundSongs, youtube)
 
-        track = await selectSearchingSongToPlay(client, ctx, response, msg, searchingTerm_message)
-        if track:
-            results['items'].append(track)
+        song = await selectSearchingSongToPlay(client, ctx, foundSongs, select_song_message, searchingTerm_message)
+        if song:
+            results['items'].append(song)
     except HttpError:
         await ctx.send("O limite de requisições foi atingido. Não é possível procurar por uma música usando Youtube"
                     "Data API.")
@@ -522,19 +554,16 @@ async def searchTracksUsingKeyWord(client, ctx, search):
         return False
 
 
-async def constructSearchingSongMessage(ctx, response, youtube_api):
-
+async def constructSearchingSongMessage(ctx, foundSongs, youtube):
     msg = '**Selecione uma faixa clicando no emoji correspondente.**\n'
     
-    for x in range(0, len(response['items'])):
-
-        # Pega a 'duração' do vídeo
-        video = youtube_api.videos().list(id=response['items'][x]['id']['videoId'], part='contentDetails').execute()
+    for x in range(0, len(foundSongs['items'])):
+        video = youtube.videos().list(id=foundSongs['items'][x]['id']['videoId'], part='contentDetails').execute()
         duration = list(
             re.match(r'^PT(\d+H)?(\d+M)?(\d+S)?$', video['items'][0]['contentDetails']['duration']).groups())
 
         video_duration = transformVideoDuration(duration)
-        video_title = response['items'][x]['snippet']['title']
+        video_title = foundSongs['items'][x]['snippet']['title']
 
         msg = msg + f"**{(x + 1)})** {video_title} - ({video_duration})\n"
     
@@ -567,8 +596,8 @@ def transformVideoDuration(duration):
     return duration[0] + duration[1] + duration[2]
 
 
-async def selectSearchingSongToPlay(client, ctx, response, msg, searchingTerm_message):
-    select_song_message = await ctx.send(msg)
+async def selectSearchingSongToPlay(client, ctx, foundSongs, select_song_message, searchingTerm_message):
+    select_song_message = await ctx.send(select_song_message)
     emoji = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
     await select_song_message.add_reaction(emoji[0])
     await select_song_message.add_reaction(emoji[1])
@@ -591,8 +620,8 @@ async def selectSearchingSongToPlay(client, ctx, response, msg, searchingTerm_me
         await select_song_message.delete()
         for x in range(0, len(emoji)):
             if str(reaction.emoji) == emoji[x]:
-                youtube_video_title = response['items'][x]['snippet']['title']
-                youtube_video_url = f'https://www.youtube.com/watch?v={response["items"][x]["id"]["videoId"]}'
+                youtube_video_title = foundSongs['items'][x]['snippet']['title']
+                youtube_video_url = f'https://www.youtube.com/watch?v={foundSongs["items"][x]["id"]["videoId"]}'
                 return {'title': youtube_video_title, 'url': youtube_video_url}
 
     except asyncio.TimeoutError:
@@ -602,24 +631,23 @@ async def selectSearchingSongToPlay(client, ctx, response, msg, searchingTerm_me
         return False
 
 
-async def addTracksToQueue(client, ctx, tracks):
-    for track in tracks:
-        queue.append({'title': track['title'], 'url': track['url'], 'user_name': ctx.author.name, 'user_id': ctx.author.id})
+async def addSongsToQueue(client, ctx, songs):
+    for song in songs:
+        queue.append({'title': song['title'], 'url': song['url'], 'user_name': ctx.author.name, 'user_id': ctx.author.id})
         if shuffle_mode:
-            queue_shuffled.append({'title': track['title'], 'url': track['url'], 'user_name': ctx.author.name, 'user_id': ctx.author.id})
+            queue_shuffled.append({'title': song['title'], 'url': song['url'], 'user_name': ctx.author.name, 'user_id': ctx.author.id})
 
     print("Added to queue\n")
     return
 
+async def addSongsToQueueToPlayNext(client, ctx, songs):
+    for song in reversed(songs):
+        queue.insert(0, {'title': song['title'], 'url': song['url'], 'user_name': ctx.author.name, 'user_id': ctx.author.id})
+        if shuffle_mode:
+            queue_shuffled.insert(0, {'title': song['title'], 'url': song['url'], 'user_name': ctx.author.name, 'user_id': ctx.author.id})
 
-def GetVideoTitleAndURL(id):
-    get_video_title = os.popen(f'youtube-dl --default-search "ytsearch" --skip-download --get-title "{id}"') \
-        .read().split(sep='\n')
-
-    youtube_video_title = get_video_title[0]
-    youtube_video_url = f'https://www.youtube.com/watch?v={id}'
-    return {'title': youtube_video_title, 'url': youtube_video_url}
-
+    print("Added to queue")
+    return
 
 def setup(client):
     client.add_cog(Music(client))
