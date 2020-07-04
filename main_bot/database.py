@@ -88,7 +88,7 @@ class PlaylistDatabase:
         """, (guild_id, user_id, playlist_name))
 
         results = self.cursor.fetchone()
-        return {'privacy': f'{results[0]}', 'songs': f'{ast.literal_eval(results[1])}'}
+        return {'privacy': results[0], 'songs': ast.literal_eval(results[1])}
 
     def checkExistence(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
