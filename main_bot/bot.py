@@ -1,6 +1,9 @@
 import discord
 import os
 import sys
+import site
+print(site.getuserbase())
+site.addsitedir('.\\')
 from discord.ext import commands
 
 # Adiciona em 'sys.path' o diretório da pasta 'discord-bot-py' para não dar erro de
@@ -8,6 +11,8 @@ from discord.ext import commands
 import re
 path = re.match(r"(?P<path>.+)\\", sys.path[0])
 sys.path.append(f"{path['path']}")
+for x in str(sys.path).split(','):
+    print(x)
 # ---------------------------------------------------
 
 import logging

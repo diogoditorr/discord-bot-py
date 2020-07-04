@@ -45,8 +45,6 @@ class PlaylistDatabase:
 
     def addSongs(self, guild_id, user_id, playlist_name, new_songs):
         new_playlist_songs = PlaylistDatabase.returnSongs(self, guild_id, user_id, playlist_name)['songs']
-
-        new_playlist_songs = ast.literal_eval(new_playlist_songs)
         
         for song in new_songs:
             new_playlist_songs.append(song)
@@ -90,7 +88,7 @@ class PlaylistDatabase:
         """, (guild_id, user_id, playlist_name))
 
         results = self.cursor.fetchone()
-        return {'privacy': f'{results[0]}', 'songs': f'{results[1]}'}
+        return {'privacy': f'{results[0]}', 'songs': f'{ast.literal_eval(results[1])}'}
 
     def checkExistence(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
