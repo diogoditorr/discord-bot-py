@@ -24,7 +24,7 @@ class PlaylistDatabase:
         (guild_id, guild_name, user_id, playlist_name, playlist_owner, privacy, len(songs), str(songs)))
         self.connection.commit()
 
-    def update(self, guild_id, user_id, playlist_name, privacy):
+    def updatePlaylistPrivacy(self, guild_id, user_id, playlist_name, privacy):
         self.cursor.execute("""
             UPDATE playlists
             SET privacy = ?
@@ -32,6 +32,16 @@ class PlaylistDatabase:
             user_id = ? AND
             LOWER(playlist_name) = LOWER(?)
         """, (privacy, guild_id, user_id, playlist_name))
+        self.connection.commit()
+
+    def updatePlaylistSongs(self, guild_id, user_id, playlist_name, songs):
+        self.cursor.execute("""
+            UPDATE playlists
+            SET songs = ?, length_songs = ?
+            WHERE guild_id = ? AND 
+            user_id = ? AND 
+            playlist_name = ?
+        """, (str(songs), len(songs), guild_id, user_id, playlist_name))
         self.connection.commit()
 
     def delete(self, guild_id, user_id, playlist_name):

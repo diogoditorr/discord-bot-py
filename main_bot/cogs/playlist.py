@@ -27,7 +27,7 @@ class Playlist(commands.Cog):
                 playlist_name = " ".join(args)
             
             try:
-                if not playlistQuery.checkExistence(ctx.guild.id, ctx.author.id, playlist_name):
+                if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name) == False:
                     playlistQuery.create(ctx.guild.id, ctx.guild.name, ctx.author.id, playlist_name, f'{ctx.author.name}#{ctx.author.discriminator}', privacy)
                     await ctx.send("Playlist criada com sucesso!\n"
                     f"\n> _Nome:_ `{playlist_name}`" 
@@ -53,9 +53,9 @@ class Playlist(commands.Cog):
                 playlist_name = " ".join(args)
 
             try:
-                if playlistQuery.checkExistence(ctx.guild.id, ctx.author.id, playlist_name):
+                if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
                     playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
-                    playlistQuery.update(ctx.guild.id, ctx.author.id, playlist_name, privacy)
+                    playlistQuery.updatePlaylistPrivacy(ctx.guild.id, ctx.author.id, playlist_name, privacy)
                     await ctx.send("Playlist atualizada com sucesso!\n"
                         f"\n> _Nome:_ `{playlist_name}`" 
                         f"\n> _Propriedade:_ **{'Pública' if privacy == 'public' else 'Privado'}**")
@@ -88,7 +88,7 @@ class Playlist(commands.Cog):
                 return
 
 
-        if playlistQuery.checkExistence(ctx.guild.id, ctx.author.id, playlist_name):
+        if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
             playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
             songs = await searchSongs(self.client, ctx, search)
             if songs:
@@ -192,9 +192,25 @@ class Playlist(commands.Cog):
         print(ctx.message.raw_mentions)
 
     @commands.command()
-    async def removefromplaylist(self, ctx, playlist_name, search):
-        pass
+    async def removefromplaylist(self, ctx, *, args):
+        # removefromplaylist <playlist-name> - <[start:end] or keyword name>
+        matchedCommand = re.match(r'^(.+) (index|keyword) (.+)$', args)
+        if matchedCommand:
+            playlist_name = matchedCommand.group(1)
+            method = matchedCommand.group(2)
+            IndexOrKeyword = matchedCommand.group(3)
 
+            if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
+                playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
+
+                if method == 'index':
+                    await removeSongsFromIndex(ctx, playlist_name, IndexOrKeyword)
+                elif method == 'keyword':
+                    await removeSongFromKeyword(self.client, ctx, playlist_name, IndexOrKeyword)
+            else:
+                await ctx.send("Não existe uma playlist sua com esse nome.")
+
+    
     @commands.command()
     async def seeallplaylist(self, ctx, *, userID):
 
@@ -240,7 +256,7 @@ class Playlist(commands.Cog):
             await ctx.send("O _ID_ de usuário informado não é válido. Verifique novamente.")
             return
 
-        if await CheckPlaylist(ctx, userID, playlist_name):
+        if PlaylistExists(ctx.guild.id, userID, playlist_name):
             playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
 
             songs = await returnPlaylistSongs(ctx, userID, playlist_name)
@@ -249,7 +265,7 @@ class Playlist(commands.Cog):
 
     @commands.command()
     async def deleteplaylist(self, ctx, *, playlist_name):
-        if playlistQuery.checkExistence(ctx.guild.id, ctx.author.id, playlist_name):
+        if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
             playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
             playlistQuery.delete(ctx.guild.id, ctx.author.id, playlist_name)
             await ctx.send(f"Playlist `{playlist_name}` deletada com sucesso.")
@@ -274,7 +290,7 @@ async def saveQueueToNewPlaylist(ctx, privacy, playlist_name):
         privacy = 'public'
 
     try:
-        if not playlistQuery.checkExistence(ctx.guild.id, ctx.author.id, playlist_name):
+        if not PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
             songs = takeSongsFromQueue()
 
             playlistQuery.create(ctx.guild.id, ctx.guild.name, ctx.author.id, playlist_name, f'{ctx.author.name}#{ctx.author.discriminator}', privacy, songs)
@@ -293,9 +309,11 @@ async def saveQueueToNewPlaylist(ctx, privacy, playlist_name):
         "\n_Você pode alterar a propriedade utilizando o comando `updateplaylist`._")
 
 
+
+
 async def saveQueueToExistencePlaylist(ctx, playlist_name):
     try:
-        if playlistQuery.checkExistence(ctx.guild.id, ctx.author.id, playlist_name):
+        if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
             playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
             
             songs = takeSongsFromQueue()
@@ -330,11 +348,98 @@ def takeSongsFromQueue():
     return queueSongs    
 
 
-async def CheckPlaylist(ctx, userID, playlist_name):
-    if playlistQuery.checkExistence(ctx.guild.id, userID, playlist_name):
+async def removeSongsFromIndex(ctx, playlist_name, index):
+    # Caso index não case a string, vai dar erro  no método groupdict()
+    index = re.match(r'^(?P<start>\d+)-(?P<end>\d+)$', index).groupdict()
+    index['start'], index['end'] = int(index['start']), int(index['end'])
+
+    if index and validateIndex(index):
+        playlistSongs = playlistQuery.returnSongs(ctx.guild.id, ctx.author.id, playlist_name)
+
+        del playlistSongs['songs'][index['start']-1:index['end']]
+        playlistQuery.updatePlaylistSongs(ctx.guild.id, ctx.author.id, playlist_name, playlistSongs['songs'])
+    else:
+        await ctx.send("O index informado é inválido. Use `começo-fim`\n"
+                       "*Exemplo:* **1-14; 12-16; ...")
+
+
+def validateIndex(index):
+    boolean = True
+    
+    if index['start'] > index['end']:
+        boolean = False
+    
+    if index['start'] < 1:
+        boolean = False
+
+    return boolean
+
+
+async def removeSongFromKeyword(client, ctx, playlist_name, search):
+    prohibitedCharacters = ["_", "-", "/", "\\", "(", ")", "[", "]", "^", ",", ";", "{", "}", '"', "'",
+                            '.', '<', '>']
+
+    keywords = search.split(' ')
+    keywords = [x.strip().lower() for x in keywords if not (x in prohibitedCharacters)]
+    keywords = [re.sub(r"[-()/\[\]\\\"'*#/@;:<>{}`+=~|.!?,]", "", keyword) for keyword in keywords]
+
+    # regex_expression example: ^.*?\bcat\b.*?\bmat\b.*?$
+    regex_expression = '^'
+    for keyword in keywords:
+        regex_expression = regex_expression + f".*?\\b{keyword}\\b"
+    regex_expression = regex_expression + '.*?$'
+
+    playlistSongs = playlistQuery.returnSongs(ctx.guild.id, ctx.author.id, playlist_name)
+    
+    matchedSong = ''
+    for song in playlistSongs['songs']:
+        matchedTitle = re.match(r"{}".format(regex_expression), song['title'].lower())
+        if matchedTitle:
+            matchedSong = song
+            break
+
+    if await confirmFoundSong(client, ctx, matchedSong, playlist_name):
+        playlistSongs['songs'].remove(matchedSong)
+        playlistQuery.updatePlaylistSongs(ctx.guild.id, ctx.author.id, playlist_name, playlistSongs['songs'])
+
+        message = await ctx.send("Música removida com sucesso!")
+        await message.delete(delay=5)
+
+
+async def confirmFoundSong(client, ctx, song, playlist_name):
+    confirmSongMessage = await ctx.send("A música achada foi **{}**\n"
+                                        "da playlist  :arrow_right:  **{}**.\n"
+                                        "\nDeseja confirmar?".format(song['title'], playlist_name))
+    emojis = ['✅', '❌']
+    await confirmSongMessage.add_reaction(emojis[0])
+    await confirmSongMessage.add_reaction(emojis[1])
+
+    def check(reaction, user):
+        return reaction.message.id == confirmSongMessage.id \
+            and user == ctx.author \
+            and (str(reaction.emoji) == emojis[0]
+            or str(reaction.emoji) == emojis[1])
+
+    try:
+        reaction, user = await client.wait_for('reaction_add', timeout=40, check=check)
+        await confirmSongMessage.delete()
+        
+        if str(reaction.emoji) == emojis[0]:
+            return True
+        elif str(reaction.emoji) == emojis[1]:
+            return False
+
+    except asyncio.TimeoutError:
+        error = await ctx.send("Você demorou muito.")
+        await error.delete(delay=5)
+        await confirmSongMessage.delete()
+        return False
+
+
+def PlaylistExists(guild_id, user_id, playlist_name):
+    if playlistQuery.checkExistence(guild_id, user_id, playlist_name):
         return True
     else:
-        await ctx.send(f"Não existe uma playlist do usuário <@{userID}> com esse nome.")
         return False
 
     
@@ -356,7 +461,7 @@ async def returnPlaylistSongs(ctx, userID, playlist_name):
 
 async def showSongsFromPlaylist(client, ctx, userID, playlist_name):
 
-    if await CheckPlaylist(ctx, userID, playlist_name):
+    if PlaylistExists(ctx.guild.id, userID, playlist_name):
         playlist_name = playlistQuery.returnName(ctx.guild.id, userID, playlist_name)
         songs = await returnPlaylistSongs(ctx, userID, playlist_name)
 
@@ -378,6 +483,7 @@ async def showSongsFromPlaylist(client, ctx, userID, playlist_name):
                 else:
                     break
 
+
 async def waitPageFromPlaylistMessageChange(client, ctx, playlistSongs, message, page, emojis):
     def check(reaction, user):
         return reaction.message.id == message.id \
@@ -387,11 +493,20 @@ async def waitPageFromPlaylistMessageChange(client, ctx, playlistSongs, message,
             or str(reaction.emoji) == emojis[2]
             or str(reaction.emoji) == emojis[3])
 
-    try:
-        done, pending = await asyncio.wait(
-            [client.wait_for('reaction_add', timeout=120, check=check), 
-            client.wait_for('reaction_remove', timeout=120, check=check)], 
-            return_when=asyncio.FIRST_COMPLETED)
+    exceptions = []
+
+    done, pending = await asyncio.wait(
+        [client.wait_for('reaction_add', timeout=120, check=check), 
+        client.wait_for('reaction_remove', timeout=120, check=check)], 
+        return_when=asyncio.FIRST_COMPLETED)
+    
+    for task in done:
+        exceptions.append(task.exception())
+
+    for pending_task in pending:
+        pending_task.cancel()
+
+    if exceptions[0] == None:
         reaction = done.pop().result()[0]
         
         max_pages = returnMaxPlaylistPages(playlistSongs)
@@ -406,8 +521,9 @@ async def waitPageFromPlaylistMessageChange(client, ctx, playlistSongs, message,
             page = LastPage(page, max_pages)
 
         return page
-    except asyncio.TimeoutError:
+    else:
         return False
+
 
 def returnMaxPlaylistPages(playlistSongs):
     max_pages = len(playlistSongs) // SONGS_PER_PAGE

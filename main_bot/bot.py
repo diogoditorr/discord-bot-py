@@ -34,17 +34,17 @@ client = commands.Bot(command_prefix=prefix)
 
 cogs_PATH = f'{sys.path[0]}\cogs'
 
-def permsVerify(context):
+async def permsVerify(context):
     if context.message.author.id == context.guild.owner.id:
         return True
     else:
-        context.send("Você não tem permissão para usar essa comando.")
+        await context.send("Você não tem permissão para usar essa comando.")
         return False
 
 
 @client.command()
 async def load(ctx, extension):
-    if permsVerify(ctx):
+    if await permsVerify(ctx):
         await ctx.send(f'Ativando o arquivo "{extension}.py".')
         client.load_extension(f'cogs.{extension}')
         await ctx.send(f'Ativado o arquivo "{extension}.py".')
@@ -52,7 +52,7 @@ async def load(ctx, extension):
 
 @client.command()
 async def unload(ctx, extension):
-    if permsVerify(ctx):
+    if await permsVerify(ctx):
         await ctx.send(f'Desativando o arquivo "{extension}.py".')
         client.unload_extension(f'cogs.{extension}')
         await ctx.send(f'Desativado o arquivo "{extension}.py".')
@@ -60,7 +60,7 @@ async def unload(ctx, extension):
 
 @client.command()
 async def reload(ctx, extension):
-    if permsVerify(ctx):
+    if await permsVerify(ctx):
         await ctx.send(f'Recarregando o arquivo "{extension}.py".')
         client.unload_extension(f'cogs.{extension}')
         client.load_extension(f'cogs.{extension}')
@@ -69,7 +69,7 @@ async def reload(ctx, extension):
 
 @client.command()
 async def reload_all(ctx):
-    if permsVerify(ctx):
+    if await permsVerify(ctx):
         await ctx.send(f'Recarregando todos os arquivos.')
 
         for filename_unload in os.listdir(cogs_PATH):
