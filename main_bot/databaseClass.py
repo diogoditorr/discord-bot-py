@@ -24,40 +24,38 @@ class PlaylistDatabase:
         (guild_id, guild_name, user_id, playlist_name, playlist_owner, privacy, len(songs), str(songs)))
         self.connection.commit()
 
-    def updatePlaylistPrivacy(self, guild_id, user_id, playlist_name, privacy):
+    def updatePlaylistPrivacy(self, playlist, privacy):
         self.cursor.execute("""
             UPDATE playlists
             SET privacy = ?
             WHERE guild_id = ? AND
             user_id = ? AND
             LOWER(playlist_name) = LOWER(?)
-        """, (privacy, guild_id, user_id, playlist_name))
+        """, (privacy, playlist.guild_id, playlist.owner_id, playlist.name))
         self.connection.commit()
 
-    def updatePlaylistSongs(self, guild_id, user_id, playlist_name, songs):
+    def updatePlaylistSongs(self, playlist):
         self.cursor.execute("""
             UPDATE playlists
             SET songs = ?, length_songs = ?
             WHERE guild_id = ? AND 
             user_id = ? AND 
             LOWER(playlist_name) = LOWER(?)
-        """, (str(songs), len(songs), guild_id, user_id, playlist_name))
+        """, (str(playlist.songs), len(playlist.songs), playlist.guild_id, playlist.owner_id, playlist.name))
         self.connection.commit()
 
-    def delete(self, guild_id, user_id, playlist_name):
+    def delete(self, playlist):
         self.cursor.execute("""
             DELETE FROM playlists
             WHERE guild_id = ? AND
             user_id = ? AND
             playlist_name = ?
-        """, (guild_id, user_id, playlist_name))
+        """, (playlist.guild_id, playlist.owner_id, playlist.name))
         self.connection.commit()
 
-    def addSongs(self, guild_id, user_id, playlist_name, new_songs):
-        new_playlist_songs = self.returnPlaylist(guild_id, user_id, playlist_name)['songs']
-        
+    def addSongs(self, playlist, new_songs):
         for song in new_songs:
-            new_playlist_songs.append(song)
+            playlist.songs.append(song)
 
         self.cursor.execute("""
             UPDATE playlists
@@ -65,7 +63,7 @@ class PlaylistDatabase:
             WHERE guild_id = ? AND
             user_id = ? AND
             LOWER(playlist_name) = LOWER(?)
-        """, (str(new_playlist_songs), len(new_playlist_songs), guild_id, user_id, playlist_name))
+        """, (str(playlist.songs), len(playlist.songs), playlist.guild_id, playlist.owner_id, playlist.name))
         self.connection.commit()
 
     def GetUserPlaylists(self, guild_id, user_id):
@@ -78,15 +76,15 @@ class PlaylistDatabase:
         """, (guild_id, user_id))
         return self.cursor.fetchall()
 
-    def returnName(self, guild_id, user_id, playlist_name):
-        self.cursor.execute("""
-            SELECT playlist_name
-            FROM playlists
-            WHERE guild_id = ? AND
-            user_id = ? AND
-            LOWER(playlist_name) = LOWER(?)
-        """, (guild_id, user_id, playlist_name))
-        return self.cursor.fetchone()[0]
+    # def returnName(self, guild_id, user_id, playlist_name):
+    #     self.cursor.execute("""
+    #         SELECT playlist_name
+    #         FROM playlists
+    #         WHERE guild_id = ? AND
+    #         user_id = ? AND
+    #         LOWER(playlist_name) = LOWER(?)
+    #     """, (guild_id, user_id, playlist_name))
+    #     return self.cursor.fetchone()[0]
 
     def returnPlaylist(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""

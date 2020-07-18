@@ -4,7 +4,8 @@ import re
 import ast
 from .music import songPlayingNow, queue
 from .music import searchSongs, addSongsToQueue, PlaySong
-from database import PlaylistDatabase
+from main_bot.databaseClass import PlaylistDatabase
+from main_bot.playlistClass import Playlist
 from discord.ext import commands
 
 playlistQuery = PlaylistDatabase('guilds_database.db')
@@ -53,12 +54,13 @@ class PlaylistCommands(commands.Cog):
                 privacy = 'public'
                 playlist_name = " ".join(args)
 
+            playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
+
             try:
-                if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
-                    playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
-                    playlistQuery.updatePlaylistPrivacy(ctx.guild.id, ctx.author.id, playlist_name, privacy)
+                if playlist:
+                    playlistQuery.updatePlaylistPrivacy(playlist, privacy)
                     await ctx.send("Playlist atualizada com sucesso!\n"
-                        f"\n> _Nome:_ `{playlist_name}`" 
+                        f"\n> _Nome:_ `{playlist.name}`" 
                         f"\n> _Propriedade:_ **{'Pública' if privacy == 'public' else 'Privado'}**")
                 else:
                     await ctx.send("Não existe uma playlist sua com esse nome.")
@@ -88,20 +90,20 @@ class PlaylistCommands(commands.Cog):
                             '\n`.addtoplaylist Favorite Songs - Imagine Dragons Believer`')
                 return
 
-
-        if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
-            playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
+        playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
+        if playlist:
             songs = await searchSongs(self.client, ctx, search)
+
             if songs:
-                playlistQuery.addSongs(ctx.guild.id, ctx.author.id, playlist_name, songs['items'])
-                if songs['playlist']:
+                playlistQuery.addSongs(playlist, songs['items'])
+                if songs['is_playlist']:
                     embed = discord.Embed(color=ctx.guild.me.top_role.color,
                                     title='**Adicionado a Playlist**',
-                                    description=f"`{len(songs['items'])}` músicas em *{playlist_name}*.  [{ctx.author.mention}]")
+                                    description=f"`{len(songs['items'])}` músicas em *{playlist.name}*.  [{ctx.author.mention}]")
                 else:
                     embed = discord.Embed(color=ctx.guild.me.top_role.color,
                                     title='**Adicionado a Playlist**',
-                                    description=f'[{songs["items"][0]["title"]}]({songs["items"][0]["url"]}) em  *{playlist_name}*.  [{ctx.author.mention}]')
+                                    description=f'[{songs["items"][0]["title"]}]({songs["items"][0]["url"]}) em  *{playlist.name}*.  [{ctx.author.mention}]')
                     
                 await ctx.send(embed=embed)
             else:
@@ -149,13 +151,13 @@ class PlaylistCommands(commands.Cog):
                 if validateIndex(index) == False:
                     return
 
-            user_playlist = playlistQuery.returnPlaylist(
+            user_playlist = Playlist.returnValidPlaylist(
                 ctx.guild.id, 
                 int(command['userID']), 
                 command['user_playlist_name'] 
             )
 
-            author_playlist = playlistQuery.returnPlaylist(
+            author_playlist = Playlist.returnValidPlaylist(
                 ctx.guild.id,
                 ctx.author.id, 
                 command['author_playlist_name']
@@ -163,20 +165,15 @@ class PlaylistCommands(commands.Cog):
 
             if author_playlist and user_playlist and isPlaylistPublic(ctx, user_playlist):
                 if index:
-                    new_songs = user_playlist['songs'][index['start']-1:index['end']]
+                    new_songs = user_playlist.songs[index['start']-1:index['end']]
                 else:
-                    new_songs = user_playlist['songs']
+                    new_songs = user_playlist.songs
 
-                playlistQuery.addSongs(
-                    ctx.guild.id, 
-                    ctx.author.id,
-                    author_playlist['name'],
-                    new_songs
-                )
+                playlistQuery.addSongs(author_playlist, new_songs)
 
                 embed=discord.Embed(title="Playlist Importada com Sucesso!", color=ctx.guild.me.top_role.color)
-                embed.add_field(name=":arrow_right:  Origem:", value=f" {user_playlist['name']} \n [{user_playlist['owner']}]\n{'-' * 15}", inline=True)
-                embed.add_field(name=":arrow_right:  Destino:", value=f" {author_playlist['name']} \n [{author_playlist['owner']}]\n{'-' * 15}", inline=True)
+                embed.add_field(name=":arrow_right:  Origem:", value=f" {user_playlist.name} \n [{user_playlist.owner}]\n{'-' * 15}", inline=True)
+                embed.add_field(name=":arrow_right:  Destino:", value=f" {author_playlist.name} \n [{author_playlist.owner}]\n{'-' * 15}", inline=True)
                 embed.add_field(name=":musical_note:  Adicionada:", value=f" **{len(new_songs)}** {'músicas' if len(new_songs) > 1 else 'música'}.", inline=False)
                 await ctx.send(embed=embed)
 
@@ -198,7 +195,7 @@ class PlaylistCommands(commands.Cog):
             method = matchedCommand.group(2)
             IndexOrKeyword = matchedCommand.group(3)
 
-            playlist = playlistQuery.returnPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
+            playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
             if playlist:
                 if method == 'index':
                     await removeSongsFromIndex(ctx, playlist, IndexOrKeyword)
@@ -235,7 +232,7 @@ class PlaylistCommands(commands.Cog):
                 userID = match.group(2)
                 playlist_name = match.group(3)
 
-                playlist = playlistQuery.returnPlaylist(ctx.guild.id, userID, playlist_name)
+                playlist = Playlist.returnValidPlaylist(ctx.guild.id, int(userID), playlist_name)
                 if playlist:
                     await showSongsFromPlaylist(self.client, ctx, playlist)
             else:
@@ -263,46 +260,46 @@ class PlaylistCommands(commands.Cog):
                 if validateIndex(index) == False:
                     return
 
-        playlist = playlistQuery.returnPlaylist(ctx.guild.id, userID, playlist_name)
+        playlist = Playlist.returnValidPlaylist(ctx.guild.id, int(userID), playlist_name)
         if playlist:
             if PlaylistCanBePlayed(ctx, playlist):
                 if index:
-                    playlist['songs'] = playlist['songs'][index['start']-1:index['end']]
+                    playlist.songs = playlist.songs[index['start']-1:index['end']]
 
                 await addPlaylistSongsToQueue(self.client, ctx, playlist)
 
     @commands.command()
     async def deleteplaylist(self, ctx, *, playlist_name):
-        playlist = playlistQuery.returnPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
+        playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
         if playlist:
-            playlistQuery.delete(ctx.guild.id, ctx.author.id, playlist['name'])
-            await ctx.send(f"Playlist `{playlist['name']}` deletada com sucesso.")
+            playlistQuery.delete(playlist)
+            await ctx.send(f"Playlist `{playlist.name}` deletada com sucesso.")
         else:
             await ctx.send("Não existe uma playlist sua com esse nome.")
 
     @commands.command()
     async def clearplaylist(self, ctx, *, playlist_name):
-        if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
-            playlist = playlistQuery.returnPlaylist(
-                ctx.guild.id, 
-                ctx.author.id, 
-                playlist_name
-            )
+        playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
+        if playlist:
 
-            playlistQuery.updatePlaylistSongs(ctx.guild.id, ctx.author.id, playlist_name, [])
+            playlist.songs = []
+            playlistQuery.updatePlaylistSongs(playlist)
 
-            await ctx.send(f"Playlist `{playlist['name']}` limpada com sucesso.")
+            await ctx.send(f"Playlist `{playlist.name}` limpada com sucesso.")
         else:
             await ctx.send("Você não tem uma playlist com esse nome.")
 
 
+
+
+
 async def addPlaylistSongsToQueue(client, ctx, playlist):
 
-    await addSongsToQueue(client, ctx, playlist['songs'])
+    await addSongsToQueue(client, ctx, playlist.songs)
 
     embed = discord.Embed(color=ctx.guild.me.top_role.color,
                         title='**Adicionado a Fila**',
-                        description=f"`{len(playlist['songs'])}` músicas da playlist *{playlist['name']}*.  [{ctx.author.mention}]")
+                        description=f"`{len(playlist.songs)}` músicas da playlist *{playlist.name}*.  [{ctx.author.mention}]")
     await ctx.send(embed=embed)
 
     await PlaySong(client, ctx)
@@ -336,12 +333,11 @@ async def saveQueueToNewPlaylist(ctx, privacy, playlist_name):
 
 async def saveQueueToExistencePlaylist(ctx, playlist_name):
     try:
-        if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
-            playlist_name = playlistQuery.returnName(ctx.guild.id, ctx.author.id, playlist_name)
-            
+        playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
+        if playlist:
             songs = takeSongsFromQueue()
 
-            playlistQuery.addSongs(ctx.guild.id, ctx.author.id, playlist_name, songs)
+            playlistQuery.addSongs(playlist, songs)
         else:
             await ctx.send("Não existe uma playlist sua com esse nome.")
             return
@@ -353,11 +349,11 @@ async def saveQueueToExistencePlaylist(ctx, playlist_name):
     if len(songs) > 1:
         embed = discord.Embed(color=ctx.guild.me.top_role.color,
                         title='**Adicionado a Playlist**',
-                        description=f"`{len(songs)}` músicas em *{playlist_name}*.  [{ctx.author.mention}]")
+                        description=f"`{len(songs)}` músicas em *{playlist.name}*.  [{ctx.author.mention}]")
     else:
         embed = discord.Embed(color=ctx.guild.me.top_role.color,
                         title='**Adicionado a Playlist**',
-                        description=f'[{songs[0]["title"]}]({songs[0]["url"]}) em  *{playlist_name}*.  [{ctx.author.mention}]')
+                        description=f'[{songs[0]["title"]}]({songs[0]["url"]}) em  *{playlist.name}*.  [{ctx.author.mention}]')
         
     await ctx.send(embed=embed)
 
@@ -374,8 +370,8 @@ def takeSongsFromQueue():
 def isPlaylistPublic(ctx, playlist):
     public = True
 
-    if ctx.author.id != int(user_id): 
-        if playlist['privacy'] == 'private':
+    if ctx.author.id != int(playlist.owner_id): 
+        if playlist.privacy == 'private':
             public = False
 
     return public
@@ -387,8 +383,8 @@ async def removeSongsFromIndex(ctx, playlist, index):
     index['start'], index['end'] = int(index['start']), int(index['end'])
 
     if index and validateIndex(index):
-        del playlist['songs'][index['start']-1:index['end']]
-        playlistQuery.updatePlaylistSongs(ctx.guild.id, ctx.author.id, playlist['name'], playlist['songs'])
+        del playlist.songs[index['start']-1:index['end']]
+        playlistQuery.updatePlaylistSongs(playlist)
     else:
         await ctx.send("O index informado é inválido. Use `começo-fim`\n"
                        "*Exemplo:* **1-14; 12-16; ...")
@@ -421,15 +417,15 @@ async def removeSongFromKeyword(client, ctx, playlist, search):
     regex_expression = regex_expression + '.*?$'
 
     matchedSong = ''
-    for song in playlist['songs']:
+    for song in playlist.songs:
         matchedTitle = re.match(r"{}".format(regex_expression), song['title'].lower())
         if matchedTitle:
             matchedSong = song
             break
 
-    if await confirmFoundSong(client, ctx, matchedSong, playlist['name']):
-        playlist['songs'].remove(matchedSong)
-        playlistQuery.updatePlaylistSongs(ctx.guild.id, ctx.author.id, playlist['name'], playlist['songs'])
+    if await confirmFoundSong(client, ctx, matchedSong, playlist.name):
+        playlist.songs.remove(matchedSong)
+        playlistQuery.updatePlaylistSongs(playlist)
 
         message = await ctx.send("Música removida com sucesso!")
         await message.delete(delay=5)
@@ -475,8 +471,8 @@ def PlaylistExists(guild_id, user_id, playlist_name):
 async def PlaylistCanBePlayed(ctx, playlist):
     playable = True
 
-    if playlist['privacy'] == 'public' or ctx.author.id == int(playlist['owner_id']):
-        if len(playlist['songs']) == 0:
+    if playlist.privacy == 'public' or ctx.author.id == playlist.owner_id:
+        if len(playlist.songs) == 0:
             await ctx.send("Essa playlist não tem nenhuma música. Para adicionar músicas utilize:\n"
                             "\n`.addtoplaylist <nome da playlist> - <nome da música ou url>`")
             playable = False
@@ -490,10 +486,10 @@ async def PlaylistCanBePlayed(ctx, playlist):
 async def showSongsFromPlaylist(client, ctx, playlist):
 
     if isPlaylistPublic(ctx, playlist):
-        if playlist['songs'] > 0:
+        if playlist.songs > 0:
             page = 1
 
-            message = await ctx.send(f"Mostrando músicas da playlist _{playlist['name']}_")
+            message = await ctx.send(f"Mostrando músicas da playlist _{playlist.name}_")
             await asyncio.sleep(1.5)
             await constructSongsFromPlaylistMessage(ctx, playlist, message, page)
             
@@ -510,11 +506,11 @@ async def showSongsFromPlaylist(client, ctx, playlist):
 
 
 async def constructSongsFromPlaylistMessage(ctx, playlist, message, page):
-    max_pages = returnMaxPlaylistPages(playlist['songs'])
+    max_pages = returnMaxPlaylistPages(playlist.songs)
 
-    page_list = playlist['songs'][SONGS_PER_PAGE * (page - 1):SONGS_PER_PAGE * page]
+    page_list = playlist.songs[SONGS_PER_PAGE * (page - 1):SONGS_PER_PAGE * page]
 
-    new_message = f"Página **{page}** de **{max_pages}** da playlist `{playlist['name']}`\n\n"
+    new_message = f"Página **{page}** de **{max_pages}** da playlist `{playlist.name}`\n\n"
 
     index = SONGS_PER_PAGE * (page - 1)
     for song in page_list:
@@ -549,7 +545,7 @@ async def waitPageFromPlaylistMessageChange(client, ctx, playlist, message, page
     if exceptions[0] == None:
         reaction = done.pop().result()[0]
         
-        max_pages = returnMaxPlaylistPages(playlist['songs'])
+        max_pages = returnMaxPlaylistPages(playlist.songs)
 
         if reaction.emoji == emojis[0]:
             page = FirstPage(page)

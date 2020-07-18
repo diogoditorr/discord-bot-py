@@ -45,7 +45,7 @@ class MusicCommands(commands.Cog):
         if songs:
             await addSongsToQueue(self.client, ctx, songs['items'])
             
-            if songs['playlist']:
+            if songs['is_playlist']:
                 embed = discord.Embed(color=ctx.guild.me.top_role.color,
                             title='**Adicionado a Fila**',
                             description=f"`{len(songs['items'])}` músicas da playlist.  [{ctx.author.mention}]")
@@ -272,7 +272,7 @@ class MusicCommands(commands.Cog):
         if songs:
             await addSongsToQueueToPlayNext(self.client, ctx, songs['items'])
             
-            if songs['playlist']:
+            if songs['is_playlist']:
                 embed = discord.Embed(color=ctx.guild.me.top_role.color,
                             title='**Adicionado ao Começo da Fila**',
                             description=f"`{len(songs['items'])}` músicas da playlist.  [{ctx.author.mention}]")
@@ -453,7 +453,7 @@ async def searchSongs(client, ctx, search):
 
 
 async def searchSongsUsingURL(ctx, search):
-    results = {'playlist': False, 'items': []}
+    results = {'is_playlist': False, 'items': []}
 
     link = re.match(r"^https://www\.youtube\.com/(?P<state>watch|playlist)\?(v|list)=(?P<id>[0-9A-Za-z_-]+).*$", search)
     if link != None:
@@ -464,7 +464,7 @@ async def searchSongsUsingURL(ctx, search):
             results['items'].append(GetVideoTitleAndURL(link['id']))
 
         elif link['state'] == 'playlist':
-            results['playlist'] = True
+            results['is_playlist'] = True
             playlistItems = await searchSongsThroughPlaylistItems(ctx, link['id'])
             
             if playlistItems:
@@ -530,7 +530,7 @@ async def searchSongsThroughPlaylistItems(ctx, id):
 
 
 async def searchSongsUsingKeyWord(client, ctx, search):
-    results = {'playlist': False, 'items': []}
+    results = {'is_playlist': False, 'items': []}
 
     try:
         youtube = discovery.build('youtube', 'v3', developerKey=youtube_api_key)
