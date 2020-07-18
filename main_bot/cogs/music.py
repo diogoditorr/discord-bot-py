@@ -30,7 +30,7 @@ youtube_api_key = settings.youtube_api_key()
 
 
 
-class Music(commands.Cog):
+class MusicCommands(commands.Cog):
 
     def __init__(self, client):
         self.client = client
@@ -650,4 +650,4 @@ async def addSongsToQueueToPlayNext(client, ctx, songs):
     return
 
 def setup(client):
-    client.add_cog(Music(client))
+    client.add_cog(MusicCommands(client))

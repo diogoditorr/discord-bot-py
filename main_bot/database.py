@@ -40,7 +40,7 @@ class PlaylistDatabase:
             SET songs = ?, length_songs = ?
             WHERE guild_id = ? AND 
             user_id = ? AND 
-            playlist_name = ?
+            LOWER(playlist_name) = LOWER(?)
         """, (str(songs), len(songs), guild_id, user_id, playlist_name))
         self.connection.commit()
 
@@ -54,7 +54,7 @@ class PlaylistDatabase:
         self.connection.commit()
 
     def addSongs(self, guild_id, user_id, playlist_name, new_songs):
-        new_playlist_songs = PlaylistDatabase.returnSongs(self, guild_id, user_id, playlist_name)['songs']
+        new_playlist_songs = self.returnPlaylist(guild_id, user_id, playlist_name)['songs']
         
         for song in new_songs:
             new_playlist_songs.append(song)
@@ -64,7 +64,7 @@ class PlaylistDatabase:
             SET songs = ?, length_songs = ?
             WHERE guild_id = ? AND
             user_id = ? AND
-            playlist_name = ?
+            LOWER(playlist_name) = LOWER(?)
         """, (str(new_playlist_songs), len(new_playlist_songs), guild_id, user_id, playlist_name))
         self.connection.commit()
 
@@ -88,17 +88,35 @@ class PlaylistDatabase:
         """, (guild_id, user_id, playlist_name))
         return self.cursor.fetchone()[0]
 
-    def returnSongs(self, guild_id, user_id, playlist_name):
+    def returnPlaylist(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
-            SELECT privacy, songs
+            SELECT guild_id,
+                playlist_name, 
+                playlist_owner, 
+                user_id, 
+                privacy, 
+                songs
             FROM playlists
             WHERE guild_id = ? AND
             user_id = ? AND
-            playlist_name = ?
+            LOWER(playlist_name) = LOWER(?)
         """, (guild_id, user_id, playlist_name))
 
         results = self.cursor.fetchone()
-        return {'privacy': results[0], 'songs': ast.literal_eval(results[1])}
+
+        if results != None:
+            playlist = {
+                'guild_id': int(results[0]),
+                'name': results[1],
+                'owner': results[2],
+                'owner_id': int(results[3]),
+                'privacy': results[4], 
+                'songs': ast.literal_eval(results[5])
+            }
+        else:
+            playlist = None
+        
+        return playlist
 
     def checkExistence(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
