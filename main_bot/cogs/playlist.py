@@ -164,7 +164,7 @@ class PlaylistCommands(commands.Cog):
 
             if author_playlist and user_playlist and isPlaylistPublic(ctx, user_playlist):
                 if index:
-                    new_songs = user_playlist.songs[index['start']-1:index['end']]
+                    new_songs = user_playlist.songs[index['start']-1 : index['end']]
                 else:
                     new_songs = user_playlist.songs
 
@@ -257,7 +257,7 @@ class PlaylistCommands(commands.Cog):
                 if (playlist := Playlist.returnPlaylist(ctx.guild.id, userID, playlist_name)):
                     if PlaylistCanBePlayed(ctx, playlist):
                         if index:
-                            playlist.songs = playlist.songs[index['start']-1:index['end']]
+                            playlist.songs = playlist.songs[index['start']-1 : index['end']]
 
                         await addPlaylistSongsToQueue(self.client, ctx, playlist)
                 else:
@@ -287,9 +287,6 @@ class PlaylistCommands(commands.Cog):
             await ctx.send(f"Playlist `{playlist.name}` limpada com sucesso.")
         else:
             await ctx.send("Você não tem uma playlist com esse nome.")
-
-
-
 
 
 async def addPlaylistSongsToQueue(client, ctx, playlist):
@@ -380,7 +377,7 @@ async def removeSongsFromIndex(ctx, playlist, index):
     index['start'], index['end'] = int(index['start']), int(index['end'])
 
     if index and validateIndex(index):
-        del playlist.songs[index['start']-1:index['end']]
+        del playlist.songs[index['start']-1 : index['end']]
         playlistQuery.updatePlaylistSongs(playlist)
     else:
         await ctx.send("O index informado é inválido. Use `começo-fim`\n"
