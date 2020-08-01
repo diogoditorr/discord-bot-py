@@ -14,8 +14,9 @@ class Playlist():
     
 
     @classmethod
-    def returnValidPlaylist(cls, guild_id, user_id, playlist_name):
+    def returnPlaylist(cls, guild_id, user_id, playlist_name):
         playlist = playlistQuery.returnPlaylist(guild_id, user_id, playlist_name)
+        
         if playlist:
             return cls(playlist)
         else:

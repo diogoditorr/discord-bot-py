@@ -7,8 +7,6 @@ import ast
 import os
 import re
 import sys
-path = re.match(r"(?P<path>.+)\\", sys.path[0])
-sys.path.append(f"{path['path']}")
 import settings
 from apiclient import discovery
 from discord.ext import commands
@@ -72,7 +70,7 @@ class MusicCommands(commands.Cog):
                 await ctx.send("As páginas só podem ser mostradas com números positivos!")
                 return
 
-            SONGS_PER_PAGE = 10  # Quantas músicas aparecerão por página
+            SONGS_PER_PAGE = 10
 
             max_pages = len(queue) // SONGS_PER_PAGE
             if len(queue) % SONGS_PER_PAGE > 0:
@@ -203,7 +201,6 @@ class MusicCommands(commands.Cog):
         shuffle_mode = False
         repeat_mode = 'off'
 
-        # Feature Incomplete: Parar a música mesmo quando pausar
         if voice:
             print("Music stopped")
             voice.stop()
@@ -252,7 +249,7 @@ class MusicCommands(commands.Cog):
 
     @commands.command()
     async def shutdown(self, ctx):
-        if ctx.message.author.id == ctx.guild.owner.id:  # replace OWNERID with your user id
+        if ctx.message.author.id == ctx.guild.owner.id:
             print("shutdown")
             try:
                 await self.client.logout()
@@ -303,7 +300,7 @@ async def PlaySong(client, ctx):
 
     voiceClient = get(client.voice_clients, guild=ctx.guild)
     if voiceClient:
-        if readyToPlay():
+        if canContinue():
             if isPlayingOrPaused(voiceClient) == False:
 
                 if repeat_mode != 'single' or song_downloaded == False:
@@ -328,7 +325,6 @@ async def PlaySong(client, ctx):
             song_downloaded = False
 
 
-# Coloca a música no final da fila caso esteja repetindo todas as músicas.
 async def VerifyQueue(client, ctx):
     if repeat_mode == 'all' and songPlayingNow:
         queue.append(songPlayingNow)
@@ -360,7 +356,7 @@ async def connectToUserVoiceChannel(client, ctx):
         pass
 
 
-def readyToPlay():
+def canContinue():
     if len(queue) != 0 or repeat_mode == 'single' or repeat_mode == 'all':
         return True
     else:
@@ -442,8 +438,6 @@ async def deletePlayerMessages():
 
 
 async def searchSongs(client, ctx, search):
-    # Quebrar linhas e separar funções
- 
     if search.startswith('https://'):
         songs = await searchSongsUsingURL(ctx, search)
     else:

@@ -76,16 +76,6 @@ class PlaylistDatabase:
         """, (guild_id, user_id))
         return self.cursor.fetchall()
 
-    # def returnName(self, guild_id, user_id, playlist_name):
-    #     self.cursor.execute("""
-    #         SELECT playlist_name
-    #         FROM playlists
-    #         WHERE guild_id = ? AND
-    #         user_id = ? AND
-    #         LOWER(playlist_name) = LOWER(?)
-    #     """, (guild_id, user_id, playlist_name))
-    #     return self.cursor.fetchone()[0]
-
     def returnPlaylist(self, guild_id, user_id, playlist_name):
         self.cursor.execute("""
             SELECT guild_id,

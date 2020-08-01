@@ -3,7 +3,7 @@ import asyncio
 import re
 import ast
 from .music import songPlayingNow, queue
-from .music import searchSongs, addSongsToQueue, PlaySong
+from .music import searchSongs, addSongsToQueue, PlaySong, isUserConnectedInVoiceChannel
 from main_bot.databaseClass import PlaylistDatabase
 from main_bot.playlistClass import Playlist
 from discord.ext import commands
@@ -17,9 +17,9 @@ class PlaylistCommands(commands.Cog):
     def __init__(self, client):
         self.client = client
 
+    # createplaylist [privacy: private|public] <playlist-name>
     @commands.command()
     async def createplaylist(self, ctx, *args):
-        # createplaylist [privacy: private|public] <playlist-name>
         if len(args) > 0:
             if args[0] == 'private' or args[0] == 'public':
                 privacy = args[0]
@@ -30,7 +30,9 @@ class PlaylistCommands(commands.Cog):
             
             try:
                 if PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name) == False:
+                    
                     playlistQuery.create(ctx.guild.id, ctx.guild.name, ctx.author.id, playlist_name, f'{ctx.author.name}#{ctx.author.discriminator}', privacy)
+                    
                     await ctx.send("Playlist criada com sucesso!\n"
                     f"\n> _Nome:_ `{playlist_name}`" 
                     f"\n> _Propriedade:_ **{'Pública' if privacy == 'public' else 'Privado'}**"
@@ -43,6 +45,7 @@ class PlaylistCommands(commands.Cog):
         else:
             await ctx.send("Você não informou o nome da playlist.")
 
+    # updateplaylist [public|private] <playlist-name>
     @commands.command()
     async def updateplaylist(self, ctx, *args):
 
@@ -54,11 +57,11 @@ class PlaylistCommands(commands.Cog):
                 privacy = 'public'
                 playlist_name = " ".join(args)
 
-            playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
-
             try:
-                if playlist:
+                if (playlist := Playlist.returnPlaylist(ctx.guild.id, ctx.author.id, playlist_name)):
+                    
                     playlistQuery.updatePlaylistPrivacy(playlist, privacy)
+                    
                     await ctx.send("Playlist atualizada com sucesso!\n"
                         f"\n> _Nome:_ `{playlist.name}`" 
                         f"\n> _Propriedade:_ **{'Pública' if privacy == 'public' else 'Privado'}**")
@@ -70,6 +73,7 @@ class PlaylistCommands(commands.Cog):
         else:
             await ctx.send("Você não informou o nome da playlist.")
 
+    # addtoplaylist <playlist-name> - <url or keyword>
     @commands.command()
     async def addtoplaylist(self, ctx, *args):
         for x in args:
@@ -90,12 +94,10 @@ class PlaylistCommands(commands.Cog):
                             '\n`.addtoplaylist Favorite Songs - Imagine Dragons Believer`')
                 return
 
-        playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
-        if playlist:
-            songs = await searchSongs(self.client, ctx, search)
-
-            if songs:
+        if (playlist := Playlist.returnPlaylist(ctx.guild.id, ctx.author.id, playlist_name)):
+            if (songs := await searchSongs(self.client, ctx, search)):
                 playlistQuery.addSongs(playlist, songs['items'])
+                
                 if songs['is_playlist']:
                     embed = discord.Embed(color=ctx.guild.me.top_role.color,
                                     title='**Adicionado a Playlist**',
@@ -107,15 +109,15 @@ class PlaylistCommands(commands.Cog):
                     
                 await ctx.send(embed=embed)
             else:
-                await ctx.send("Algum erro aconteceu.")
+                await ctx.send("Não foi achado nenhuma música ou playlist.")
         else:
             await ctx.send("Não existe uma playlist sua com esse nome.")
 
+    # savequeuetoplaylist <add|new> [public|private] <playlist-name>
     @commands.command()
     async def savequeuetoplaylist(self, ctx, *, args):
-        regex = re.match(r'^(add|new) ((public|private) )?(.+)$', args)
-        
-        if regex:
+
+        if (regex := re.match(r'^(add|new) ((public|private) )?(.+)$', args)):
             if songPlayingNow:
                 privacy = regex.group(3)
                 playlist_name = regex.group(4)
@@ -130,17 +132,14 @@ class PlaylistCommands(commands.Cog):
             await ctx.send("Argumento inválido. Use: \n\n"
                            "`.savequeuetoplaylist <add|new> [public|private] <playlist-name>`")
 
+    # includeplaylist <playlist-name> - <id-user> <playlist-name-user> [songs-interval]
     @commands.command()
     async def includeplaylist(self, ctx, *, args):
-        # includeplaylist <playlist-name> - <id-user> <playlist-name-user> [songs-interval]
         index = None
-
         regex = r"^(?P<author_playlist_name>.+) - <?@?(?:[!&]?)(?P<userID>[0-9]+)>? (?P<user_playlist_name>(?:.(?!\d+-\d+))+) ?(?:(?P<start>\d+)-(?P<end>\d+))?$"
 
-        matches = re.match(regex, args)
-        if matches:
+        if (matches := re.match(regex, args)):
             command = matches.groupdict()
-
 
             if command['start'] and command['end']:
                 index = {
@@ -151,13 +150,13 @@ class PlaylistCommands(commands.Cog):
                 if validateIndex(index) == False:
                     return
 
-            user_playlist = Playlist.returnValidPlaylist(
+            user_playlist = Playlist.returnPlaylist(
                 ctx.guild.id, 
                 int(command['userID']), 
                 command['user_playlist_name'] 
             )
 
-            author_playlist = Playlist.returnValidPlaylist(
+            author_playlist = Playlist.returnPlaylist(
                 ctx.guild.id,
                 ctx.author.id, 
                 command['author_playlist_name']
@@ -176,7 +175,6 @@ class PlaylistCommands(commands.Cog):
                 embed.add_field(name=":arrow_right:  Destino:", value=f" {author_playlist.name} \n [{author_playlist.owner}]\n{'-' * 15}", inline=True)
                 embed.add_field(name=":musical_note:  Adicionada:", value=f" **{len(new_songs)}** {'músicas' if len(new_songs) > 1 else 'música'}.", inline=False)
                 await ctx.send(embed=embed)
-
             else:
                 await ctx.send("Não foi possível importar uma playlist para outra. Isso pode ter\n"
                                "acontecido pelos seguintes motivos:\n"
@@ -186,101 +184,102 @@ class PlaylistCommands(commands.Cog):
         else:
             await ctx.send("Argumento inválido. Use: `includeplaylist <playlist-name> - <id-user> <playlist-name-user> [songs interval]`")
 
+    # removefromplaylist <playlist-name> - <[start:end] or keyword name>
     @commands.command()
     async def removefromplaylist(self, ctx, *, args):
-        # removefromplaylist <playlist-name> - <[start:end] or keyword name>
-        matchedCommand = re.match(r'^(.+) (index|keyword) (.+)$', args)
-        if matchedCommand:
+        if (matchedCommand := re.match(r'^(.+) (index|keyword) (.+)$', args)):
             playlist_name = matchedCommand.group(1)
             method = matchedCommand.group(2)
             IndexOrKeyword = matchedCommand.group(3)
 
-            playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
-            if playlist:
+            if (playlist := Playlist.returnPlaylist(ctx.guild.id, ctx.author.id, playlist_name)):
                 if method == 'index':
                     await removeSongsFromIndex(ctx, playlist, IndexOrKeyword)
                 elif method == 'keyword':
                     await removeSongFromKeyword(self.client, ctx, playlist, IndexOrKeyword)
             else:
                 await ctx.send("Não existe uma playlist sua com esse nome.")
+        else:
+            await ctx.send("Argumento inválido. Use:\n"
+                           "`removefromplaylist <playlist-name> <index|keyword> <[start:end]|keyword name>`")
 
-    
+    # seeallplaylist <user id or @user>
     @commands.command()
     async def seeallplaylist(self, ctx, *, userID):
 
-        id = re.match(r"^<?@?([!&]?)([0-9]+)>?$", userID)
-        if id != None and id.group(1) != '&':
-            userID = id.group(2)
+        if (match := re.match(r"^<?@?!?([0-9]+)>?$", userID)):
+            userID = match.group(1)
         else:
-            await ctx.send("O _ID_ de usuário informado não é válido. Verifique novamente.")
+            await ctx.send("O _ID_ do usuário informado não é válido. Verifique novamente.")
             return
 
         userPlaylists = playlistQuery.GetUserPlaylists(ctx.guild.id, userID)
 
         msg = f"> Playlists do usuário <@{userID}>:\n"
-        for item in userPlaylists:
-            msg = msg + f"\t**#{userPlaylists.index(item)+1} -** {item[0]}\t_(Songs: {item[1]})_\n"
+        for playlist in userPlaylists:
+            msg = msg + f"\t**#{userPlaylists.index(playlist)+1} -** {playlist[0]}\t_(Songs: {playlist[1]})_\n"
         
         await ctx.send(msg)
 
+    # showplaylist <user id or @user> <playlist name>
     @commands.command()
     async def showplaylist(self, ctx, *, args):
-        match = re.match(r"^<?@?([!&]?)([0-9]+)>? (.+)$", args)
         
-        if match:
-            if match.group(1) != '&':
-                userID = match.group(2)
-                playlist_name = match.group(3)
+        if (match := re.match(r"^<?@?!?([0-9]+)>? (.+)$", args)):
+            userID = match.group(2)
+            playlist_name = match.group(3)
 
-                playlist = Playlist.returnValidPlaylist(ctx.guild.id, int(userID), playlist_name)
-                if playlist:
-                    await showSongsFromPlaylist(self.client, ctx, playlist)
-            else:
-                await ctx.send("O _ID_ de usuário informado não é válido. Verifique novamente.")
-                return
+            if (playlist := Playlist.returnPlaylist(ctx.guild.id, int(userID), playlist_name)):
+                await showSongsFromPlaylist(self.client, ctx, playlist)
+
         else:
             await ctx.send("Argumentos inválidos. Utilize:\n"
                            "`showplaylist <id do usuário ou mencionado> <playlist name>`")
-            return
 
+    # loadplaylist <user id> <playlist-name>
     @commands.command()
     async def loadplaylist(self, ctx, *, args):
-        index = None
-        
-        matches = re.match(r"<?@?(?:[!&]?)([0-9]+)>? ((?:.(?!\d+-\d+))+) ?(?:(\d+)-(\d+))?$", args)
-        if matches:
-            userID = matches.group(1)
-            playlist_name = matches.group(2)
-            
-            if matches.group(3) and matches.group(4):
-                index = {
-                    'start': int(matches.group(3)),
-                    'end': int(matches.group(4))
-                }
-                if validateIndex(index) == False:
-                    return
+        if await isUserConnectedInVoiceChannel(ctx):
+            index = None
+             
+            if (matches := re.match(r"<?@?(?:[!&]?)([0-9]+)>? ((?:.(?!\d+-\d+))+) ?(?:(\d+)-(\d+))?$", args)):
+                userID = int(matches.group(1))
+                playlist_name = matches.group(2)
+                
+                if matches.group(3) and matches.group(4):
+                    index = {
+                        'start': int(matches.group(3)),
+                        'end': int(matches.group(4))
+                    }
+                    if validateIndex(index) == False:
+                        return
 
-        playlist = Playlist.returnValidPlaylist(ctx.guild.id, int(userID), playlist_name)
-        if playlist:
-            if PlaylistCanBePlayed(ctx, playlist):
-                if index:
-                    playlist.songs = playlist.songs[index['start']-1:index['end']]
+                if (playlist := Playlist.returnPlaylist(ctx.guild.id, userID, playlist_name)):
+                    if PlaylistCanBePlayed(ctx, playlist):
+                        if index:
+                            playlist.songs = playlist.songs[index['start']-1:index['end']]
 
-                await addPlaylistSongsToQueue(self.client, ctx, playlist)
+                        await addPlaylistSongsToQueue(self.client, ctx, playlist)
+                else:
+                    await ctx.send(f"Não existe uma playlist do usuário <@{userID}> com esse nome.")
+            else:
+                await ctx.send("Argumento inválido. Use:\n"
+                               "`loadplaylist <@user ou id do usuário> <nome da playlist>`")
 
+    # deleteplaylist <playlist-name>
     @commands.command()
     async def deleteplaylist(self, ctx, *, playlist_name):
-        playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
-        if playlist:
+        if (playlist := Playlist.returnPlaylist(ctx.guild.id, ctx.author.id, playlist_name)):
             playlistQuery.delete(playlist)
+
             await ctx.send(f"Playlist `{playlist.name}` deletada com sucesso.")
         else:
             await ctx.send("Não existe uma playlist sua com esse nome.")
 
+    # clearplaylist <playlist-name>
     @commands.command()
-    async def clearplaylist(self, ctx, *, playlist_name):
-        playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
-        if playlist:
+    async def clearplaylist(self, ctx, *, playlist_name):    
+        if (playlist := Playlist.returnPlaylist(ctx.guild.id, ctx.author.id, playlist_name)):
 
             playlist.songs = []
             playlistQuery.updatePlaylistSongs(playlist)
@@ -312,7 +311,6 @@ async def saveQueueToNewPlaylist(ctx, privacy, playlist_name):
     try:
         if not PlaylistExists(ctx.guild.id, ctx.author.id, playlist_name):
             songs = takeSongsFromQueue()
-
             playlistQuery.create(ctx.guild.id, ctx.guild.name, ctx.author.id, playlist_name, f'{ctx.author.name}#{ctx.author.discriminator}', privacy, songs)
         else:
             await ctx.send("Já existe uma playlist sua com esse nome.")
@@ -333,34 +331,33 @@ async def saveQueueToNewPlaylist(ctx, privacy, playlist_name):
 
 async def saveQueueToExistencePlaylist(ctx, playlist_name):
     try:
-        playlist = Playlist.returnValidPlaylist(ctx.guild.id, ctx.author.id, playlist_name)
-        if playlist:
+        if (playlist := Playlist.returnPlaylist(ctx.guild.id, ctx.author.id, playlist_name)):
             songs = takeSongsFromQueue()
-
             playlistQuery.addSongs(playlist, songs)
+            if len(songs) > 1:
+                embed = discord.Embed(color=ctx.guild.me.top_role.color,
+                                title='**Adicionado a Playlist**',
+                                description=f"`{len(songs)}` músicas em *{playlist.name}*.  [{ctx.author.mention}]")
+            else:
+                embed = discord.Embed(color=ctx.guild.me.top_role.color,
+                                title='**Adicionado a Playlist**',
+                                description=f'[{songs[0]["title"]}]({songs[0]["url"]}) em  *{playlist.name}*.  [{ctx.author.mention}]')
+                
+            await ctx.send(embed=embed)
         else:
             await ctx.send("Não existe uma playlist sua com esse nome.")
-            return
+            
     except Exception as error:
         print(error)
         await ctx.send("Não foi possível adicionar músicas na playlist.")
-        return
 
-    if len(songs) > 1:
-        embed = discord.Embed(color=ctx.guild.me.top_role.color,
-                        title='**Adicionado a Playlist**',
-                        description=f"`{len(songs)}` músicas em *{playlist.name}*.  [{ctx.author.mention}]")
-    else:
-        embed = discord.Embed(color=ctx.guild.me.top_role.color,
-                        title='**Adicionado a Playlist**',
-                        description=f'[{songs[0]["title"]}]({songs[0]["url"]}) em  *{playlist.name}*.  [{ctx.author.mention}]')
-        
-    await ctx.send(embed=embed)
 
 
 def takeSongsFromQueue():
     queueSongs = []
+
     queueSongs.append({'title': f"{songPlayingNow['title']}", 'url': f"{songPlayingNow['url']}"})
+    
     for song in queue:
         queueSongs.append({'title': f"{song['title']}", 'url': f"{song['url']}"})
 
@@ -370,7 +367,7 @@ def takeSongsFromQueue():
 def isPlaylistPublic(ctx, playlist):
     public = True
 
-    if ctx.author.id != int(playlist.owner_id): 
+    if ctx.author.id != playlist.owner_id: 
         if playlist.privacy == 'private':
             public = False
 
@@ -410,31 +407,34 @@ async def removeSongFromKeyword(client, ctx, playlist, search):
     keywords = [x.strip().lower() for x in keywords if not (x in prohibitedCharacters)]
     keywords = [re.sub(r"[-()/\[\]\\\"'*#/@;:<>{}`+=~|.!?,]", "", keyword) for keyword in keywords]
 
-    # regex_expression example: ^.*?\bcat\b.*?\bmat\b.*?$
+    # regex_expression example: ^.*?\bcat\b.*?\bmat\b.*?$ with ['cat', 'mat']
     regex_expression = '^'
     for keyword in keywords:
         regex_expression = regex_expression + f".*?\\b{keyword}\\b"
     regex_expression = regex_expression + '.*?$'
 
-    matchedSong = ''
+    matchedSong = None
     for song in playlist.songs:
-        matchedTitle = re.match(r"{}".format(regex_expression), song['title'].lower())
-        if matchedTitle:
+        if (matchedTitle := re.match(r"{}".format(regex_expression), song['title'].lower())):
             matchedSong = song
             break
 
-    if await confirmFoundSong(client, ctx, matchedSong, playlist.name):
-        playlist.songs.remove(matchedSong)
-        playlistQuery.updatePlaylistSongs(playlist)
+    if matchedSong:
+        if await confirmFoundSong(client, ctx, matchedSong, playlist.name):
+            playlist.songs.remove(matchedSong)
+            playlistQuery.updatePlaylistSongs(playlist)
 
-        message = await ctx.send("Música removida com sucesso!")
-        await message.delete(delay=5)
-
+            message = await ctx.send("Música removida com sucesso!")
+            await message.delete(delay=5)
+    else:
+        await ctx.send(f"Não foi possível achar nenhuma música correspondente em **{playlist.name}**.")
 
 async def confirmFoundSong(client, ctx, song, playlist_name):
+    
     confirmSongMessage = await ctx.send("A música achada foi **{}**\n"
                                         "da playlist  :arrow_right:  **{}**.\n"
                                         "\nDeseja confirmar?".format(song['title'], playlist_name))
+    
     emojis = ['✅', '❌']
     await confirmSongMessage.add_reaction(emojis[0])
     await confirmSongMessage.add_reaction(emojis[1])
@@ -486,7 +486,7 @@ async def PlaylistCanBePlayed(ctx, playlist):
 async def showSongsFromPlaylist(client, ctx, playlist):
 
     if isPlaylistPublic(ctx, playlist):
-        if playlist.songs > 0:
+        if len(playlist.songs) > 0:
             page = 1
 
             message = await ctx.send(f"Mostrando músicas da playlist _{playlist.name}_")
@@ -498,11 +498,14 @@ async def showSongsFromPlaylist(client, ctx, playlist):
                 await message.add_reaction(emoji)
             
             while True: 
-                page = await waitPageFromPlaylistMessageChange(client, ctx, playlist, message, page, emojis)
+                page = await waitPageFromPlaylistMessageChange(client, ctx, playlist, message, page)
+                
                 if page:
                     await constructSongsFromPlaylistMessage(ctx, playlist, message, page)
                 else:
                     break
+    else:
+        await ctx.send(f"A **{playlist.name}** playlist é **privada**")
 
 
 async def constructSongsFromPlaylistMessage(ctx, playlist, message, page):
@@ -520,7 +523,10 @@ async def constructSongsFromPlaylistMessage(ctx, playlist, message, page):
     await message.edit(content=new_message)
 
 
-async def waitPageFromPlaylistMessageChange(client, ctx, playlist, message, page, emojis):
+async def waitPageFromPlaylistMessageChange(client, ctx, playlist, message, page):
+    emojis = ['⏫', '⬆️', '⬇️', '⏬']
+    exceptions = []
+    
     def check(reaction, user):
         return reaction.message.id == message.id \
             and user == ctx.author \
@@ -529,7 +535,6 @@ async def waitPageFromPlaylistMessageChange(client, ctx, playlist, message, page
             or str(reaction.emoji) == emojis[2]
             or str(reaction.emoji) == emojis[3])
 
-    exceptions = []
 
     done, pending = await asyncio.wait(
         [client.wait_for('reaction_add', timeout=120, check=check), 

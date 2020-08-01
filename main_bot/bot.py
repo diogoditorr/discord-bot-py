@@ -2,8 +2,8 @@ import discord
 import os
 import sys
 import site
-print(site.getuserbase())
-site.addsitedir('.\\')
+# print(site.getuserbase())
+# site.addsitedir('.\\')
 from discord.ext import commands
 
 # Adiciona em 'sys.path' o diretório da pasta 'discord-bot-py' para não dar erro de
@@ -62,8 +62,7 @@ async def unload(ctx, extension):
 async def reload(ctx, extension):
     if await permsVerify(ctx):
         await ctx.send(f'Recarregando o arquivo "{extension}.py".')
-        client.unload_extension(f'cogs.{extension}')
-        client.load_extension(f'cogs.{extension}')
+        client.reload_extension(f'cogs.{extension}')
         await ctx.send(f'Recarregado o arquivo "{extension}.py".')
 
 
@@ -74,11 +73,7 @@ async def reload_all(ctx):
 
         for filename_unload in os.listdir(cogs_PATH):
             if filename_unload.endswith('.py'):
-                client.unload_extension(f'cogs.{filename_unload[:-3]}')
-
-        for filename_load in os.listdir(cogs_PATH):
-            if filename_load.endswith('.py'):
-                client.load_extension(f'cogs.{filename_load[:-3]}')
+                client.reload_extension(f'cogs.{filename_unload[:-3]}')
 
         await ctx.send(f'Todos os módulos foram recarregados.')
 
