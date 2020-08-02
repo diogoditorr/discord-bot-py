@@ -4,8 +4,8 @@ import re
 import ast
 from .music import songPlayingNow, queue
 from .music import searchSongs, addSongsToQueue, PlaySong, isUserConnectedInVoiceChannel
-from main_bot.databaseClass import PlaylistDatabase
-from main_bot.playlistClass import Playlist
+from main_bot.database.database import PlaylistDatabase
+from main_bot.modules.playlist import Playlist
 from discord.ext import commands
 
 playlistQuery = PlaylistDatabase('guilds_database.db')
