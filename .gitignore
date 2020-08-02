@@ -8,11 +8,13 @@ src
 .venv
 .vscode
 
+# Python Files
+settings.py
+
 # Python Cache
 __pycache__
-settings.py
 
 # Files Created
 discord.log
-init.bat
+*.bat
 *.db
