@@ -1,7 +1,7 @@
 ![discord](https://user-images.githubusercontent.com/35296262/89131859-45fd0d80-d4e6-11ea-8e9f-5faad231d10a.png)
 
 ### Language
-* [Português Brasil](./README-pt-br)
+* [Português Brasil](./README-pt-br.md)
 
 # 🤖 discord-bot-py
 Working with the Discord.py library.
