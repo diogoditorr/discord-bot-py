@@ -226,8 +226,8 @@ class PlaylistCommands(commands.Cog):
     async def showplaylist(self, ctx, *, args):
         
         if (match := re.match(r"^<?@?!?([0-9]+)>? (.+)$", args)):
-            userID = match.group(2)
-            playlist_name = match.group(3)
+            userID = match.group(1)
+            playlist_name = match.group(2)
 
             if (playlist := Playlist.returnPlaylist(ctx.guild.id, int(userID), playlist_name)):
                 await showSongsFromPlaylist(self.client, ctx, playlist)
@@ -255,7 +255,7 @@ class PlaylistCommands(commands.Cog):
                         return
 
                 if (playlist := Playlist.returnPlaylist(ctx.guild.id, userID, playlist_name)):
-                    if PlaylistCanBePlayed(ctx, playlist):
+                    if await PlaylistCanBePlayed(ctx, playlist):
                         if index:
                             playlist.songs = playlist.songs[index['start']-1 : index['end']]
 
