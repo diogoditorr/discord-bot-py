@@ -26,8 +26,6 @@ song_download_error_message = None
 youtube_api_key = settings.youtube_api_key()
 
 
-
-
 class MusicCommands(commands.Cog):
 
     def __init__(self, client):
@@ -54,7 +52,6 @@ class MusicCommands(commands.Cog):
                 
             await ctx.send(embed=embed)
             await PlaySong(self.client, ctx)
-
 
     @commands.command(name='queue', aliases=['q'])
     async def _queue(self, ctx, page=1):
@@ -112,7 +109,6 @@ class MusicCommands(commands.Cog):
 
             await ctx.send(msg)
 
-
     @commands.command()
     async def pause(self, ctx):
         voice = get(self.client.voice_clients, guild=ctx.guild)
@@ -127,7 +123,6 @@ class MusicCommands(commands.Cog):
         else:
             print("Nenhuma música está sendo tocada")
             await ctx.send("Nenhuma música está sendo tocada, falha em pausar player.")
-
 
     @commands.command(aliases=['unpause'])
     async def resume(self, ctx):
@@ -144,7 +139,6 @@ class MusicCommands(commands.Cog):
             else:
                 await ctx.send("Nenhuma música está sendo tocada, falha em despausar player.")
 
-
     @commands.command()
     async def repeat(self, ctx, arg):
         global repeat_mode
@@ -159,7 +153,6 @@ class MusicCommands(commands.Cog):
             repeat_mode = False
         else:
             await ctx.send('Use `single | off` para ativar/desativar a repetição.')
-
 
     @commands.command()
     async def shuffle(self, ctx):
@@ -188,7 +181,6 @@ class MusicCommands(commands.Cog):
             voice.stop()
             await ctx.send("Tocando próxima música.")
 
-
     @commands.command()
     async def stop(self, ctx):
         global song_downloaded, shuffle_mode, repeat_mode
@@ -208,7 +200,6 @@ class MusicCommands(commands.Cog):
         else:
             print("Nenhuma música está sendo tocada.")
             await ctx.send("Nenhuma música está sendo tocada, falha em parar player.")
-
 
     @commands.command()
     async def join(self, ctx):
@@ -245,7 +236,6 @@ class MusicCommands(commands.Cog):
             await ctx.send(f"Saiu do canal `{channel}`")
         else:
             print("O bot não está em nenhum canal.")
-
 
     @commands.command()
     async def shutdown(self, ctx):
@@ -634,6 +624,7 @@ async def addSongsToQueue(client, ctx, songs):
     print("Added to queue\n")
     return
 
+
 async def addSongsToQueueToPlayNext(client, ctx, songs):
     for song in reversed(songs):
         queue.insert(0, {'title': song['title'], 'url': song['url'], 'user_name': ctx.author.name, 'user_id': ctx.author.id})
@@ -642,6 +633,7 @@ async def addSongsToQueueToPlayNext(client, ctx, songs):
 
     print("Added to queue")
     return
+
 
 def setup(client):
     client.add_cog(MusicCommands(client))
