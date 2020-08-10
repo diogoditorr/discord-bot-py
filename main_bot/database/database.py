@@ -1,9 +1,10 @@
 import sqlite3
 import ast
+import os
 
 class PlaylistDatabase:
-    def __init__(self, database):
-        self.connection = sqlite3.connect(database)
+    def __init__(self):
+        self.connection = sqlite3.connect(os.path.dirname(__file__) + '\guilds_database.sqlite')
         self.cursor = self.connection.cursor()
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS playlists (

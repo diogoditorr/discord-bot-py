@@ -2,29 +2,9 @@ import discord
 import os
 import sys
 import site
-# print(site.getuserbase())
-# site.addsitedir('.\\')
 from discord.ext import commands
 
-# Adiciona em 'sys.path' o diretório da pasta 'discord-bot-py' para não dar erro de
-# exportação de módulo em cogs/events --> 'from main_bot.cogs.tasks import Tasks'
-import re
-path = re.match(r"(?P<path>.+)\\", sys.path[0])
-sys.path.append(f"{path['path']}")
-for x in str(sys.path).split(','):
-    print(x)
-# ---------------------------------------------------
-
-import logging
-logger = logging.getLogger('discord')
-logger.setLevel(logging.ERROR)
-handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler)
-
-
-
-# Importa as configurações
+# Import of settings
 import settings
 
 bot_token = settings.bot_token()

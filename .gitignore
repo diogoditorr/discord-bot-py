@@ -18,3 +18,4 @@ __pycache__
 discord.log
 *.bat
 *.db
+*.sqlite

@@ -2,13 +2,14 @@ import discord
 import asyncio
 import re
 import ast
-from .music import songPlayingNow, queue
-from .music import searchSongs, addSongsToQueue, PlaySong, isUserConnectedInVoiceChannel
-from main_bot.database.database import PlaylistDatabase
-from main_bot.modules.playlist import Playlist
 from discord.ext import commands
 
-playlistQuery = PlaylistDatabase('guilds_database.db')
+from .music import songPlayingNow, queue
+from .music import searchSongs, addSongsToQueue, PlaySong, isUserConnectedInVoiceChannel
+from database.database import PlaylistDatabase
+from modules.playlist import Playlist
+
+playlistQuery = PlaylistDatabase()
 
 SONGS_PER_PAGE = 15
 
@@ -184,7 +185,7 @@ class PlaylistCommands(commands.Cog):
         else:
             await ctx.send("Argumento inválido. Use: `includeplaylist <playlist-name> - <id-user> <playlist-name-user> [songs interval]`")
 
-    # removefromplaylist <playlist-name> - <[start:end] or keyword name>
+    # removefromplaylist <playlist-name> index|keyword <index or keyword>
     @commands.command()
     async def removefromplaylist(self, ctx, *, args):
         if (matchedCommand := re.match(r'^(.+) (index|keyword) (.+)$', args)):
@@ -236,7 +237,7 @@ class PlaylistCommands(commands.Cog):
             await ctx.send("Argumentos inválidos. Utilize:\n"
                            "`showplaylist <id do usuário ou mencionado> <playlist name>`")
 
-    # loadplaylist <user id> <playlist-name>
+    # loadplaylist <user id> <playlist-name> [songs-interval]
     @commands.command()
     async def loadplaylist(self, ctx, *, args):
         if await isUserConnectedInVoiceChannel(ctx):

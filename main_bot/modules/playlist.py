@@ -1,6 +1,6 @@
 from database.database import PlaylistDatabase
 
-playlistQuery = PlaylistDatabase('guilds_database.db')
+playlistQuery = PlaylistDatabase()
 
 class Playlist():
 

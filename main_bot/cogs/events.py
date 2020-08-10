@@ -1,7 +1,7 @@
 import discord
 import sys
 from discord.ext import commands
-from cogs.tasks import Tasks
+from .tasks import Tasks
 
 
 class Events(commands.Cog):

@@ -117,7 +117,7 @@ class MusicCommands(commands.Cog):
             if voice.is_playing():
                 print("Music paused")
                 voice.pause()
-                await ctx.send("A música foi pausada.")
+                await ctx.send("A música foi pausada. Para despausar utilize `.resume`")
             elif voice.is_paused():
                 await ctx.send("O player já está pausado")
         else:

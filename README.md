@@ -23,7 +23,8 @@ def youtube_api_key():
     return 'Your Youtube API Key. If you don't have one, you need to create. It's free.'
 ```
 
-#### Requirements (Python packages. It's also in Pipfile):
+#### Requirements (It's also in Pipfile):
+* [**Python version 3.8+**](https://www.python.org/)
 * [**Discord.py**](https://github.com/Rapptz/discord.py) 
 * [**Youtube-dl**](https://github.com/ytdl-org/youtube-dl) - I recommend install as in your virtual environment as in your python PATH.
 * [**google-api-python-client**](https://github.com/googleapis/google-api-python-client) - Module to use [Youtube Data API](https://developers.google.com/youtube/v3/getting-started) -> Read only the part "Before you start" to create your new key. 
