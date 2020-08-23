@@ -1,6 +1,6 @@
-from database.database import PlaylistDatabase
+from database.database import Database
 
-playlistQuery = PlaylistDatabase()
+playlistQuery = Database()
 
 class Playlist():
 

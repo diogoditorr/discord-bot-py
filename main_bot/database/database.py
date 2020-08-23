@@ -2,7 +2,7 @@ import sqlite3
 import ast
 import os
 
-class PlaylistDatabase:
+class Database:
     def __init__(self):
         self.connection = sqlite3.connect(os.path.dirname(__file__) + '\guilds_database.sqlite')
         self.cursor = self.connection.cursor()

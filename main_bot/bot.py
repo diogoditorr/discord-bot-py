@@ -7,6 +7,8 @@ from discord.ext import commands
 # Import of settings
 import settings
 
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 bot_token = settings.bot_token()
 prefix = settings.prefix()
 
@@ -60,7 +62,7 @@ async def reload_all(ctx):
 for filename in os.listdir(cogs_PATH):
     if filename.endswith('.py'):
         client.load_extension(f'cogs.{filename[:-3]}')
-
+client.load_extension('jishaku')
 
 # The token is necessary to connect the client with the API
 # on discord and use the bot.

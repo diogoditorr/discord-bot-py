@@ -1,5 +1,4 @@
 import discord
-from discord.ext import commands
 import asyncio
 import youtube_dl
 import random
@@ -7,11 +6,13 @@ import ast
 import os
 import re
 import sys
-import settings
-from apiclient import discovery
+from discord.ext import commands
 from discord.ext import commands
 from discord.utils import get
+from apiclient import discovery
 from googleapiclient.errors import HttpError
+
+import settings
 
 
 queue = []

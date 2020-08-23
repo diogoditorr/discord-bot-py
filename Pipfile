@@ -9,6 +9,7 @@ verify_ssl = true
 discord-py = {extras = ["voice"],version = "*"}
 youtube-dl = "*"
 google-api-python-client = "*"
+jishaku = "*"
 
 [requires]
 python_version = "3.8"

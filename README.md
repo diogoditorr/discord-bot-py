@@ -28,6 +28,7 @@ def youtube_api_key():
 * [**Discord.py**](https://github.com/Rapptz/discord.py) 
 * [**Youtube-dl**](https://github.com/ytdl-org/youtube-dl) - I recommend install as in your virtual environment as in your python PATH.
 * [**google-api-python-client**](https://github.com/googleapis/google-api-python-client) - Module to use [Youtube Data API](https://developers.google.com/youtube/v3/getting-started) -> Read only the part "Before you start" to create your new key. 
+* [**jishaku**](https://github.com/Gorialis/jishaku)
 
 #### External Requirements:
 * [**FFmpeg**](https://ffmpeg.org/) - It converts the audio to play on Discord. Download and place the directory of the folder in your Enviroment Variables.

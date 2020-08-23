@@ -6,10 +6,10 @@ from discord.ext import commands
 
 from .music import songPlayingNow, queue
 from .music import searchSongs, addSongsToQueue, PlaySong, isUserConnectedInVoiceChannel
-from database.database import PlaylistDatabase
+from database.database import Database
 from modules.playlist import Playlist
 
-playlistQuery = PlaylistDatabase()
+playlistQuery = Database()
 
 SONGS_PER_PAGE = 15
 
@@ -232,6 +232,8 @@ class PlaylistCommands(commands.Cog):
 
             if (playlist := Playlist.returnPlaylist(ctx.guild.id, int(userID), playlist_name)):
                 await showSongsFromPlaylist(self.client, ctx, playlist)
+            else:
+                await ctx.send(f"Não existe uma playlist do usuário com esse nome.")
 
         else:
             await ctx.send("Argumentos inválidos. Utilize:\n"
@@ -380,6 +382,8 @@ async def removeSongsFromIndex(ctx, playlist, index):
     if index and validateIndex(index):
         del playlist.songs[index['start']-1 : index['end']]
         playlistQuery.updatePlaylistSongs(playlist)
+
+        await ctx.send(f"Foram removidos **{index['end']+1 - index['start']}** músicas da playlist **{playlist.name}**")
     else:
         await ctx.send("O index informado é inválido. Use `começo-fim`\n"
                        "*Exemplo:* **1-14; 12-16; ...")

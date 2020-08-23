@@ -28,7 +28,7 @@
 ## Important
 * Between `< >` : **Mandatory**
 * Between `[ ]` : **Opcional**
-* The commands are displayed in *Portuguese* (my country). An option to change will be available later.
+* The commands are displayed in *Portuguese Brazil* (my country). An option to change will be available later.
 
 ## Music commands
 
