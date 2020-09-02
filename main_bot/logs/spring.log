@@ -1,0 +1,45 @@
+2020-09-01 14:10:44.123  INFO 6060 --- [main] lavalink.server.Launcher                 : 
+
+[32m       .  [31m _                  _ _       _    [32m__ _ _
+[32m      /\\ [31m| | __ ___   ____ _| (_)_ __ | | __[32m\ \ \ \
+[32m     ( ( )[31m| |/ _` \ \ / / _` | | | '_ \| |/ /[32m \ \ \ \
+[32m      \\/ [31m| | (_| |\ V / (_| | | | | | |   < [32m  ) ) ) )
+[32m       '  [31m|_|\__,_| \_/ \__,_|_|_|_| |_|_|\_\[32m / / / /
+[0m    =========================================[32m/_/_/_/[0m
+
+	Version:        b732272876f03061ca195bcfc3991e5a988d34b2-SNAPSHOT
+	Build:          1086
+	Build time:     13.08.2020 13:55:12 UTC
+	Branch          master
+	Commit:         b732272
+	Commit time:    13.08.2020 13:45:27 UTC
+	JVM:            13.0.2
+	Lavaplayer      1.3.50
+
+2020-09-01 14:10:44.319  INFO 6060 --- [main] lavalink.server.Launcher                 : Starting Launcher on DESKTOP-Q9MAFR2 with PID 6060 (D:\Diego Oliveira Silva\Documents\GitHub\discord-bot-py\main_bot\Lavalink.jar started by Diego in D:\Diego Oliveira Silva\Documents\GitHub\discord-bot-py\main_bot)
+2020-09-01 14:10:44.320  INFO 6060 --- [main] lavalink.server.Launcher                 : No active profile set, falling back to default profiles: default
+2020-09-01 14:10:44.392  WARN 6060 --- [background-preinit] o.s.h.c.j.Jackson2ObjectMapperBuilder    : For Jackson Kotlin classes support please add "com.fasterxml.jackson.module:jackson-module-kotlin" to the classpath
+2020-09-01 14:10:46.129  WARN 6060 --- [main] io.undertow.websockets.jsr               : UT026010: Buffer pool was not set on WebSocketDeploymentInfo, the default pool will be used
+2020-09-01 14:10:46.160  INFO 6060 --- [main] io.undertow.servlet                      : Initializing Spring embedded WebApplicationContext
+2020-09-01 14:10:46.161  INFO 6060 --- [main] o.s.web.context.ContextLoader            : Root WebApplicationContext: initialization completed in 1793 ms
+2020-09-01 14:10:46.615  WARN 6060 --- [main] l.server.config.SentryConfiguration      : Turning off sentry
+2020-09-01 14:10:46.625  INFO 6060 --- [main] l.s.c.AudioSendFactoryConfiguration      : OS: Windows 10, Arch: amd64
+2020-09-01 14:10:46.626  INFO 6060 --- [main] l.s.c.AudioSendFactoryConfiguration      : JDA-NAS supported system detected. Enabled native audio sending.
+2020-09-01 14:10:46.627  INFO 6060 --- [main] l.s.c.AudioSendFactoryConfiguration      : Setting buffer to 400ms
+2020-09-01 14:10:46.627  INFO 6060 --- [main] l.s.c.AudioSendFactoryConfiguration      : Setting playlist load limit to 6
+2020-09-01 14:10:46.925  INFO 6060 --- [main] c.s.d.l.tools.GarbageCollectionMonitor   : GC monitoring enabled, reporting results every 2 minutes.
+2020-09-01 14:10:47.363  INFO 6060 --- [main] o.s.s.concurrent.ThreadPoolTaskExecutor  : Initializing ExecutorService 'applicationTaskExecutor'
+2020-09-01 14:10:47.703  INFO 6060 --- [main] org.xnio                                 : XNIO version 3.3.8.Final
+2020-09-01 14:10:47.721  INFO 6060 --- [main] org.xnio.nio                             : XNIO NIO Implementation Version 3.3.8.Final
+2020-09-01 14:10:47.940  INFO 6060 --- [main] o.s.b.w.e.u.UndertowServletWebServer     : Undertow started on port(s) 3300 (http) with context path ''
+2020-09-01 14:10:47.946  INFO 6060 --- [main] lavalink.server.Launcher                 : Started Launcher in 4.599 seconds (JVM running for 6.103)
+2020-09-01 14:10:48.450  INFO 6060 --- [XNIO-1 task-1] io.undertow.servlet                      : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2020-09-01 14:10:48.450  INFO 6060 --- [XNIO-1 task-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2020-09-01 14:10:48.458  INFO 6060 --- [XNIO-1 task-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 7 ms
+2020-09-01 14:10:48.478  INFO 6060 --- [XNIO-1 task-1] l.server.io.HandshakeInterceptorImpl     : Incoming connection from /127.0.0.1:50219
+2020-09-01 14:10:48.600  INFO 6060 --- [XNIO-1 task-1] lavalink.server.io.SocketServer          : Connection successfully established from /127.0.0.1:50219
+2020-09-01 18:41:27.436  INFO 6060 --- [XNIO-1 I/O-8] lavalink.server.io.SocketServer          : Connection closed from /127.0.0.1:50219 -- CloseStatus[code=1006, reason=]
+2020-09-01 18:41:27.470  INFO 6060 --- [XNIO-1 I/O-8] lavalink.server.io.SocketContext         : Shutting down 0 playing players.
+2020-09-01 18:41:30.143  INFO 6060 --- [Thread-1] o.s.s.concurrent.ThreadPoolTaskExecutor  : Shutting down ExecutorService 'applicationTaskExecutor'
+2020-09-01 18:41:30.148  INFO 6060 --- [Thread-1] c.s.d.l.tools.GarbageCollectionMonitor   : GC monitoring disabled.
+2020-09-01 18:41:30.245  INFO 6060 --- [Thread-1] io.undertow.servlet                      : Destroying Spring FrameworkServlet 'dispatcherServlet'

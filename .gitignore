@@ -11,6 +11,10 @@ src
 # Python Files
 settings.py
 
+# Lavalink files
+application.yml
+Lavalink.jar
+
 # Python Cache
 __pycache__
 

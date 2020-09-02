@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "8410d0b12add55e8841b76701caa18c9a65c4494e523b998a680b02367880d6f"
+            "sha256": "2f4330d544e2a201b1e67cc60bc451f4f615a0555ab6a404e30ba7ed5e3e5dc7"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -204,6 +204,17 @@
             "index": "pypi",
             "version": "==1.19.1.200"
         },
+        "lavalink": {
+            "hashes": [
+                "sha256:d676312a7a7dd3c105097c8bd84e380d117126cff297144b43fa61683b4bc595"
+            ],
+            "index": "pypi",
+            "version": "==3.1.2"
+        },
+        "menus": {
+            "git": "https://github.com/Rapptz/discord-ext-menus.git",
+            "ref": "84caae8038d0d3adc860957ccef05baeec2e2dd8"
+        },
         "multidict": {
             "hashes": [
                 "sha256:1ece5a3369835c20ed57adadc663400b5525904e53bae59ec854a5d36b39b21a",
@@ -338,6 +349,14 @@
                 "sha256:e7983572181f5e1522d9c98453462384ee92a0be7fac5f1413a1e35c56cc0461"
             ],
             "version": "==1.25.10"
+        },
+        "wavelink": {
+            "hashes": [
+                "sha256:4eefbdaa49a0587f4ae2f23aa606006851c642d20f5214989bd569eb12aedd48",
+                "sha256:cf85eb82a0802c2d4e2074f90bf92905c9df25b38e582e52ce3c62422c69825c"
+            ],
+            "index": "pypi",
+            "version": "==0.9.4"
         },
         "wheel": {
             "hashes": [

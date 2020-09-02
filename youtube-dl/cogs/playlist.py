@@ -4,6 +4,8 @@ import re
 import ast
 from discord.ext import commands
 
+from .music import songPlayingNow, queue
+from .music import searchSongs, addSongsToQueue, PlaySong, isUserConnectedInVoiceChannel
 from database.database import Database
 from modules.playlist import Playlist
 

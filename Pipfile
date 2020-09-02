@@ -10,6 +10,9 @@ discord-py = {extras = ["voice"],version = "*"}
 youtube-dl = "*"
 google-api-python-client = "*"
 jishaku = "*"
+lavalink = "*"
+wavelink = "*"
+menus = {git = "https://github.com/Rapptz/discord-ext-menus.git"}
 
 [requires]
 python_version = "3.8"
