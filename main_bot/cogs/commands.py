@@ -3,6 +3,7 @@ import time
 import random
 from discord.ext import commands
 
+from database.database import Database
 
 def permsVerify(context):
     perm = ['Admins']
@@ -20,6 +21,20 @@ class Commands(commands.Cog):
 
     def __init__(self, client):
         self.client = client
+
+    @commands.command()
+    async def prefix(self, ctx, *args):
+        database = await Database.connect()
+
+        if len(args) == 0:
+            await ctx.send(f"O prefixo para esse servidor é `{await database.prefix.get(ctx.guild)}`")
+        else:
+            prefix = " ".join(args)
+
+            await database.prefix.change_prefix(ctx.guild, prefix)
+            await ctx.send("O prefixo do servidor mudou!\n"
+                          f"Utilize qualquer comando agora com o prefixo:  `{prefix}`")
+
 
     @commands.command()
     async def ping(self, ctx):

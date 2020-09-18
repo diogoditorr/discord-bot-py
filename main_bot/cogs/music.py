@@ -30,6 +30,9 @@ class MusicCommands(commands.Cog):
             )
             self.client.add_listener(self.client.lavalink.voice_update_handler, 'on_socket_response')
 
+            lavalink.DefaultPlayer.is_shuffled = is_shuffled  # Add an object function in lavalink.DefaultPlayer class
+
+
         self.client.lavalink.add_event_hook(self.track_hook)
 
     async def track_hook(self, event):
@@ -90,7 +93,6 @@ class MusicCommands(commands.Cog):
 
     async def ensure_voice(self, ctx):
         """ This check ensures that the bot and command author are in the same voicechannel. """
-        lavalink.DefaultPlayer.is_shuffled = is_shuffled  # Add an object function in lavalink.DefaultPlayer class
         player = self.client.lavalink.player_manager.create(ctx.guild.id, endpoint=str(ctx.guild.region))
 
         should_be_connected = ctx.command.name in ('play', 'playnext', 'repeat', 'shuffle', 'next',)
@@ -242,26 +244,24 @@ class MusicCommands(commands.Cog):
         
         else:
             await ctx.send('Use `single | off` para ativar/desativar a repetição.')
-        print(player)
 
     @commands.command()
     async def shuffle(self, ctx):
         player = self.get_player(ctx)
 
-        if player.is_shuffled():
+        if not player.queue:
+            return await ctx.send("Não há nenhuma música para embaralhar.")
 
+        if player.is_shuffled():
             player.queue = player.original_queue
             delattr(player, 'original_queue')
             await ctx.send("O reprodutor não está mais em modo aleatório.")
 
         else:
-
             player.original_queue = player.queue
             player.queue = random.sample(player.queue, len(player.queue))
             await ctx.send("O reprodutor agora está em modo aleatório.")
         
-        print(player)
-
     @commands.command(aliases=['next'])
     async def _next(self, ctx):
         player = self.get_player(ctx)

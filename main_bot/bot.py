@@ -7,15 +7,25 @@ from discord.ext import commands
 # Import of settings
 import settings
 from cogs.tasks import Tasks
+from database.database import Database
+
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 BOT_TOKEN = settings.bot_token()
 COGS_PATH = f'{sys.path[0]}\cogs'
-prefix = settings.prefix()
 on_start = True
 
-client = commands.Bot(command_prefix=prefix)
+
+async def get_prefix(*args):
+    database = await Database.connect()
+
+    guild = args[1].guild
+    prefix = await database.prefix.get(guild)
+
+    return prefix
+
+client = commands.Bot(command_prefix=get_prefix)
 
 @client.event
 async def on_ready():
@@ -24,6 +34,7 @@ async def on_ready():
     await client.change_presence(status=discord.Status.online, activity=game)
     # Tasks.change_status.start()
     load_cogs()
+    await Database.create()
 
 def load_cogs():
     global on_start

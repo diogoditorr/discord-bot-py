@@ -3,6 +3,7 @@
 *.webm
 
 # Folders
+main_bot/logs
 src
 .idea
 .venv
@@ -20,6 +21,7 @@ __pycache__
 
 # Files Created
 discord.log
+spring.log
 *.bat
 *.db
 *.sqlite
