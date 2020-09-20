@@ -19,7 +19,7 @@ class MusicCommands(commands.Cog):
     def __init__(self, client):
         self.client = client
 
-        if hasattr(client, 'lavalink') == False:
+        if not hasattr(client, 'lavalink'):
             self.client.lavalink = lavalink.Client(self.client.user.id)
             self.client.lavalink.add_node(
                 host='localhost',
@@ -101,14 +101,14 @@ class MusicCommands(commands.Cog):
         if not ctx.author.voice or not ctx.author.voice.channel:
             raise commands.CommandInvokeError('Join a voicechannel first.')
 
-        if player.is_connected == False:
+        if not player.is_connected:
             if not exceptions:
-                if should_be_connected == False:
+                if not should_be_connected:
                     raise commands.CommandInvokeError('Not connected.')
 
                 permissions = ctx.author.voice.channel.permissions_for(ctx.me)
 
-                if permissions.connect == False or permissions.speak == False:  # Check user limit too?
+                if not permissions.connect or not permissions.speak:  # Check user limit too?
                     raise commands.CommandInvokeError('I need the `CONNECT` and `SPEAK` permissions.')
 
                 player.store('channel', ctx.channel)
@@ -132,6 +132,7 @@ class MusicCommands(commands.Cog):
         query = search.strip('<>')
         if URL_RX.match(query) == None:
             query = f'ytsearch:{query}'
+        print(repr(query))
 
         if not (results := await self.search_tracks(query, player)):
             return await ctx.send('Desculpe, mas não achei nenhum resultado. Tente novamente.')
@@ -152,7 +153,7 @@ class MusicCommands(commands.Cog):
     
         await ctx.send(embed=embed)
 
-        if player.is_playing == False:
+        if not player.is_playing:
             await player.play()
             
     @commands.command()
@@ -182,7 +183,7 @@ class MusicCommands(commands.Cog):
     
         await ctx.send(embed=embed)
 
-        if player.is_playing == False:
+        if not player.is_playing:
             await player.play()
 
 
@@ -193,7 +194,7 @@ class MusicCommands(commands.Cog):
         if not player.is_connected:
             return
 
-        if len(player.queue) == 0 and not player.current:
+        if not player.queue and not player.current:
             return await ctx.send("Nenhuma música está sendo tocada.")
 
         entries = player.queue
@@ -217,7 +218,7 @@ class MusicCommands(commands.Cog):
     async def resume(self, ctx):
         player = self.get_player(ctx)
 
-        if player.paused == False:
+        if not player.paused:
             await ctx.send("O player já está tocando.")
         else:
             await player.set_pause(False)
@@ -266,14 +267,14 @@ class MusicCommands(commands.Cog):
     async def _next(self, ctx):
         player = self.get_player(ctx)
 
-        if player.is_connected == False:
+        if not player.is_connected:
             return await ctx.send("Não estou conectado.")
 
         if ctx.author.voice == None or \
          (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             return await ctx.send("Você não está no mesmo canal de voz que eu!")
 
-        if len(player.queue) == 0 and not player.current:
+        if not player.queue and not player.current:
             return await ctx.send("Não há nenhuma música na fila.")
 
         await ctx.send("Tocando próxima música...", delete_after=3)
@@ -308,7 +309,7 @@ class MusicCommands(commands.Cog):
         channel = ctx.message.author.voice.channel
         player = self.get_player(ctx)
         
-        if player.is_connected == False:
+        if not player.is_connected:
             return await ctx.send("Não estou conectado.")
 
         if ctx.author.voice == None or \

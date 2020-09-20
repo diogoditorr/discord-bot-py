@@ -7,13 +7,13 @@ class Prefix:
     DEFAULT = '.'
 
     @classmethod
-    async def _create_instance(cls, connection):
+    async def _create_instance(cls, connection: aiosqlite.Connection):
         self = Prefix()
         self.connection = connection
 
         return self
 
-    async def get(self, guild: discord.Guild): 
+    async def get(self, guild: discord.Guild) -> str: 
         prefix = await self._fetch_guild_prefix(guild)
         if not prefix:
             await self._create_new_entry(guild)

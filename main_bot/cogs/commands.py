@@ -26,7 +26,7 @@ class Commands(commands.Cog):
     async def prefix(self, ctx, *args):
         database = await Database.connect()
 
-        if len(args) == 0:
+        if not args:
             await ctx.send(f"O prefixo para esse servidor é `{await database.prefix.get(ctx.guild)}`")
         else:
             prefix = " ".join(args)
