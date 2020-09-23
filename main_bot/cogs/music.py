@@ -10,8 +10,15 @@ from discord.ext import commands, menus
 from discord.utils import get
 
 from modules.menu import PaginatorSource
+from modules.decorators import has_admin_permission, has_dj_permission, has_user_permission, test_error
+from database.exceptions import PlayerPermissionError
+
 
 URL_RX = re.compile(r'https?://(?:www\.)?.+')
+
+
+def is_shuffled(self: lavalink.DefaultPlayer):
+    return hasattr(self, 'original_queue')
 
 
 class MusicCommands(commands.Cog):
@@ -30,7 +37,7 @@ class MusicCommands(commands.Cog):
             )
             self.client.add_listener(self.client.lavalink.voice_update_handler, 'on_socket_response')
 
-            lavalink.DefaultPlayer.is_shuffled = is_shuffled  # Add an object function in lavalink.DefaultPlayer class
+            lavalink.DefaultPlayer.is_shuffled = is_shuffled  # Add an instance method in lavalink.DefaultPlayer class
 
 
         self.client.lavalink.add_event_hook(self.track_hook)
@@ -125,6 +132,12 @@ class MusicCommands(commands.Cog):
     def get_player(self, ctx: discord.ext.commands.Context):
         return self.client.lavalink.player_manager.get(ctx.guild.id)
 
+    @test_error()
+    @commands.command()
+    async def teste(self, ctx):
+        pass
+
+    @has_user_permission()
     @commands.command(aliases=['p'])
     async def play(self, ctx, *, search):
         player = self.get_player(ctx)
@@ -132,7 +145,6 @@ class MusicCommands(commands.Cog):
         query = search.strip('<>')
         if URL_RX.match(query) == None:
             query = f'ytsearch:{query}'
-        print(repr(query))
 
         if not (results := await self.search_tracks(query, player)):
             return await ctx.send('Desculpe, mas não achei nenhum resultado. Tente novamente.')
@@ -156,6 +168,7 @@ class MusicCommands(commands.Cog):
         if not player.is_playing:
             await player.play()
             
+    @has_user_permission()
     @commands.command()
     async def playnext(self, ctx, *, search):
         player = self.get_player(ctx)
@@ -186,7 +199,7 @@ class MusicCommands(commands.Cog):
         if not player.is_playing:
             await player.play()
 
-
+    @has_user_permission()
     @commands.command(name='queue', aliases=['q'])
     async def _queue(self, ctx, page=1):
         player = self.get_player(ctx)
@@ -204,6 +217,7 @@ class MusicCommands(commands.Cog):
         
         await paginator.start(ctx)
 
+    @has_dj_permission()
     @commands.command()
     async def pause(self, ctx):
         player = self.get_player(ctx)
@@ -214,6 +228,7 @@ class MusicCommands(commands.Cog):
             await player.set_pause(True)
             await ctx.send("A música foi pausada. Para voltar, utilize `.resume`")
 
+    @has_dj_permission()
     @commands.command(aliases=['unpause'])
     async def resume(self, ctx):
         player = self.get_player(ctx)
@@ -224,6 +239,7 @@ class MusicCommands(commands.Cog):
             await player.set_pause(False)
             await ctx.send("Voltando a tocar...")
 
+    @has_dj_permission()
     @commands.command()
     async def repeat(self, ctx, repeat_mode):
         player = self.get_player(ctx)
@@ -246,6 +262,7 @@ class MusicCommands(commands.Cog):
         else:
             await ctx.send('Use `single | off` para ativar/desativar a repetição.')
 
+    @has_dj_permission()
     @commands.command()
     async def shuffle(self, ctx):
         player = self.get_player(ctx)
@@ -263,7 +280,8 @@ class MusicCommands(commands.Cog):
             player.queue = random.sample(player.queue, len(player.queue))
             await ctx.send("O reprodutor agora está em modo aleatório.")
         
-    @commands.command(aliases=['next'])
+    @has_user_permission()
+    @commands.command(name='next')
     async def _next(self, ctx):
         player = self.get_player(ctx)
 
@@ -280,6 +298,7 @@ class MusicCommands(commands.Cog):
         await ctx.send("Tocando próxima música...", delete_after=3)
         await player.skip()
 
+    @has_dj_permission()
     @commands.command()
     async def stop(self, ctx):
         player = self.get_player(ctx)
@@ -291,6 +310,7 @@ class MusicCommands(commands.Cog):
 
         await ctx.send("O player parou.")
 
+    @has_user_permission()
     @commands.command(aliases=['connect'])
     async def join(self, ctx):
         player = self.get_player(ctx)
@@ -303,6 +323,7 @@ class MusicCommands(commands.Cog):
         else:
             await ctx.send("Você não está conectado a nenhum canal.")
 
+    @has_user_permission()
     @commands.command(aliases=['disconnect'])
     async def leave(self, ctx):
         """ Disconnects the player from the voice channel and clears its queue. """
@@ -361,9 +382,27 @@ class MusicCommands(commands.Cog):
 
         return queue
 
+    @join.error
+    @leave.error
+    @_next.error             
+    @pause.error            
+    @play.error             
+    @playnext.error         
+    @_queue.error
+    @repeat.error           
+    @resume.error      
+    @shuffle.error       
+    @stop.error
+    @teste.error
+    async def error_handler(self, ctx, error):
+        if isinstance(error, PlayerPermissionError):
+            await ctx.send(f"Você precisa ter a permissão de **{error.permission}** para isso.\n"
+                           f"Veja a lista utilizando `{await self.client.get_prefix(ctx)}{error.permission.lower()} list`")
+        else:
+            print(error.with_traceback())
 
-def is_shuffled(self: lavalink.DefaultPlayer):
-    return hasattr(self, 'original_queue')
+
+
 
 
 def setup(client):

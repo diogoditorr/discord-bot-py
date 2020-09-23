@@ -14,7 +14,7 @@ settings.py
 
 # Lavalink files
 application.yml
-Lavalink.jar
+*.jar
 
 # Python Cache
 __pycache__

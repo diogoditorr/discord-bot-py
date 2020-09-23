@@ -12,7 +12,7 @@ PWD = os.path.abspath(os.path.dirname(__file__))
 
 class Database:
     @classmethod
-    async def connect(cls): 
+    async def connect(cls):
         self = Database()
         self.connection = await aiosqlite.connect(os.path.realpath(PWD + '\guilds_database.sqlite'))
         self.prefix = await Prefix._create_instance(self.connection)
