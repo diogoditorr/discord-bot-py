@@ -1,12 +1,10 @@
-import aiosqlite
-import discord
 import ast
-import re
-from discord.ext import commands
-from discord.utils import get
 from typing import Union
 
-from .exceptions import AttemptOverwriteError
+import aiosqlite
+import discord
+from discord.ext import commands
+from discord.utils import get
 
 
 class BasePermissionPlayer:
@@ -71,6 +69,9 @@ class PlayerPermissions():
             self.user.members = perms[5]
 
     def has_author_permission(self, ctx: commands.Context, permission: Union[AdminPermission, DjPermission, UserPermission]) -> bool:
+        if not isinstance(ctx.author, discord.Member):
+            raise AttributeError("'{}' is not a 'Member' object in 'Context.author'".format(ctx.author.__class__)) 
+        
         if isinstance(permission, (AdminPermission, DjPermission, UserPermission)):
             return (self._author_in_members(ctx, permission) or self._author_in_roles(ctx, permission))
         else:

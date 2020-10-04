@@ -95,7 +95,7 @@ async def shutdown(self, ctx):
             await ctx.send("You do not own this bot!")
 
 async def permsVerify(context):
-    if context.message.author.id == context.guild.owner.id:
+    if context.message.author.id == context.guild.owner_id:
         return True
     else:
         await context.send("Você não tem permissão para usar essa comando.")

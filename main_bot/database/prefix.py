@@ -1,6 +1,7 @@
+import os
+
 import aiosqlite
 import discord
-import os
 
 
 class Prefix:

@@ -1,14 +1,16 @@
 import discord
 from discord.ext import commands, menus
 
+
 class PaginatorSource(menus.ListPageSource):
 
     def __init__(self, entries, player, per_page=10):
         super().__init__(entries, per_page=per_page)
         self.player = player
 
-    async def format_page(self, menu: menus.Menu, page):
+    async def format_page(self, menu: menus.Menu, page: list) -> str:
         msg = ''
+        max_pages = "1" if self.get_max_pages() == 0 else self.get_max_pages()
 
         if self.player.is_shuffled():
             msg += 'Mostrando playlist embaralhada\n'
@@ -21,7 +23,7 @@ class PaginatorSource(menus.ListPageSource):
         elif self.player.repeat:
             msg += 'Repetindo a fila atual\n\n'
 
-        msg += f'Página **{menu.current_page+1}** de **{self._max_pages}**\n\n'
+        msg += f'Página **{menu.current_page+1}** de **{max_pages}**\n\n'
 
         if menu.current_page == 0:
             if self.player.paused:
@@ -31,7 +33,7 @@ class PaginatorSource(menus.ListPageSource):
 
         index = self.per_page * menu.current_page
         for track in page:
-            index = index + 1
+            index += 1
             msg = msg + f'`[{index}]` **{track.title}** - *[@{track.extra["requester_name"]}]*\n'
         
         return msg

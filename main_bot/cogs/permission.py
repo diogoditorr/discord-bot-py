@@ -13,16 +13,20 @@ class PermissionCommands(commands.Cog):
     def __init__(self, client):
         self.client = client
 
+    async def cog_before_invoke(self, ctx):
+        """ Command before-invoke handler. """
+        guild_check = ctx.guild is not None
+        ctx.author = await ctx.guild.fetch_member(ctx.author.id) or ctx.author
+
+        return guild_check
+
     @commands.command()
     async def admin(self, ctx, mode: str, id_mentioned: Optional[Union[discord.Member, discord.Role, str]]):
         db = await Database.connect()
         perms = await db.player_permissions.get(ctx)
 
-        if mode in ('add', 'del') and isinstance(id_mentioned, str):
-            return await ctx.send("Nada foi encontrado no argumento **'**{}**'**".format(id_mentioned))
-
-        if mode in ('add', 'del') and not perms.has_author_permission(ctx, perms.admin):
-            return await ctx.send("Você não tem permissões de administrador para modificar permissões.")
+        if await self._check_exceptions(ctx, mode, id_mentioned, perms):
+            return
 
         target = self._get_from_mention(ctx, id_mentioned)
 
@@ -72,11 +76,8 @@ class PermissionCommands(commands.Cog):
         db = await Database.connect()
         perms = await db.player_permissions.get(ctx)
 
-        if mode in ('add', 'del') and isinstance(id_mentioned, str):
-            return await ctx.send("Nada foi encontrado no argumento **'**{}**'**".format(id_mentioned))
-
-        if mode in ('add', 'del') and not perms.has_author_permission(ctx, perms.admin):
-            return await ctx.send("Você não tem permissões de administrador para modificar permissões.")
+        if await self._check_exceptions(ctx, mode, id_mentioned, perms):
+            return
 
         target = self._get_from_mention(ctx, id_mentioned)
 
@@ -126,11 +127,8 @@ class PermissionCommands(commands.Cog):
         db = await Database.connect()
         perms = await db.player_permissions.get(ctx)
 
-        if mode in ('add', 'del') and isinstance(id_mentioned, str):
-            return await ctx.send("Nada foi encontrado no argumento **'**{}**'**".format(id_mentioned))
-
-        if mode in ('add', 'del') and not perms.has_author_permission(ctx, perms.admin):
-            return await ctx.send("Você não tem permissões de administrador para modificar permissões.")
+        if await self._check_exceptions(ctx, mode, id_mentioned, perms):
+            return
 
         target = self._get_from_mention(ctx, id_mentioned)
 
@@ -174,6 +172,17 @@ class PermissionCommands(commands.Cog):
                 f'{prefix}user del <role|member>\n'
                 f'{prefix}user list```'
             )
+
+    async def _check_exceptions(self, ctx, mode, id_mentioned, perms):
+        if mode in ('add', 'del') and isinstance(id_mentioned, str):
+            await ctx.send("Nada foi encontrado no argumento **'**{}**'**".format(id_mentioned))
+            return True
+
+        if mode in ('add', 'del') and not perms.has_author_permission(ctx, perms.admin):
+            await ctx.send("Você não tem permissão de administrador para modificar permissões.")
+            return True
+
+        return False
 
     def _get_from_mention(self, ctx: commands.Context, mention: Union[discord.Member, discord.Role]):
         target: str = None
