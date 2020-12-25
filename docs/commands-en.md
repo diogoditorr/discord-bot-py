@@ -99,7 +99,7 @@ Clean the queue and stop the player.
 ### [createplaylist](#table-of-content)
 `<prefix>createplaylist [privacy: private|public] <playlist-name>`
 
-Create a new playlist in a database which you can add songs and play them later. Every playlist is *public* for default.
+Create a new playlist in a database which you can add songs and play them later. Every playlist is *public* by default.
 
 #### Examples
 ```

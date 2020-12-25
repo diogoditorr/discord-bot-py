@@ -14,6 +14,7 @@ lavalink = "*"
 wavelink = "*"
 menus = {git = "https://github.com/Rapptz/discord-ext-menus.git"}
 aiosqlite = "*"
+psutil = "*"
 
 [requires]
 python_version = "3.8"
