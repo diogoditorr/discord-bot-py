@@ -4,9 +4,9 @@ from discord.ext import commands
 from discord.utils import get
 from typing import Union, Optional
 
-from database.database import Database
-from database.exceptions import AttemptOverwriteError
-from database.player_permissions import PlayerPermissions
+from ..database.database import Database
+from ..database.exceptions import AttemptOverwriteError
+from ..database.player_permissions import PlayerPermissions
 
 class PermissionCommands(commands.Cog):
 

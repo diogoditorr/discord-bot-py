@@ -1,6 +1,8 @@
 import re
+import os
+import json
 import random
-from typing import Union
+from typing import Union, Tuple, List
 
 import lavalink
 import discord
@@ -8,9 +10,10 @@ from discord.ext import commands, menus
 from discord.utils import get
 from jishaku import Jishaku, JishakuBase
 
-from modules.menu import PaginatorSource
-from modules.decorators import (has_admin_permission, has_dj_permission, has_user_permission)
-from database.exceptions import PlayerPermissionError
+from ..modules.menu import QueuePaginatorSource, SelectSong
+from ..modules.decorators import (has_admin_permission, has_dj_permission, has_user_permission)
+from ..modules.handler import Query
+from ..database.exceptions import PlayerPermissionError
 
 
 URL_RX = re.compile(r'https?://(?:www\.)?.+')
@@ -172,69 +175,44 @@ class MusicCommands(commands.Cog):
         # Except: Execute command that must be in the same channel (pause, resume, repeat, shuffle, etc...)
         # Execute command without entering the same channel but must be connected (queue)
 
+
+
+
     @commands.command(aliases=['p'])
     @has_user_permission()
-    async def play(self, ctx, *, search):
+    async def play(self, ctx, *, search: Query):
         player = self._get_player(ctx)
 
-        query = search.strip('<>')
-        if URL_RX.match(query) == None:
-            query = f'ytsearch:{query}'
-
-        if not (results := await self._search_tracks(query, player)):
+        if not (result := await self._search_tracks(search.query, player)):
             return await ctx.send('Desculpe, mas não achei nenhum resultado. Tente novamente.')
+        
+        tracks, embed = await self._convert_result(ctx, search, result)
 
-        tracks = results['tracks']
-
-        if results['loadType'] == 'PLAYLIST_LOADED':
+        if tracks:
             self._add_tracks(ctx, tracks, player)
 
-            embed = discord.Embed(color=ctx.guild.me.top_role.color,
-                        description=f"Queued: `{len(tracks)}` músicas da playlist **{results['playlistInfo']['name']}**.  [{ctx.author.mention}]")
-        else:
-            track = tracks[0]
-            self._add_tracks(ctx, [track], player)
+            await ctx.send(embed=embed)
 
-            embed = discord.Embed(color=ctx.guild.me.top_role.color,
-                        description=f"Queued: [{track['info']['title']}]({track['info']['uri']})  [{ctx.author.mention}]") 
-    
-        await ctx.send(embed=embed)
-
-        if not player.is_playing:
-            await player.play()
+            if not player.is_playing:
+                await player.play()
             
     @commands.command()
     @has_user_permission()
-    async def playnext(self, ctx, *, search):
+    async def playnext(self, ctx, *, search: Query):
         player = self._get_player(ctx)
 
-        query = search.strip('<>')
-        if URL_RX.match(query) == None:
-            query = f'ytsearch:{query}'
-
-        if not (results := await self._search_tracks(query, player)):
+        if not (result := await self._search_tracks(search.query, player)):
             return await ctx.send('Desculpe, mas não achei nenhum resultado. Tente novamente.')
 
-        tracks = results['tracks']
+        tracks, embed = await self._convert_result(ctx, search, result, queue_first=True)
 
-        if results['loadType'] == 'PLAYLIST_LOADED':
-            self._add_tracks(ctx, reversed(tracks), player, index=0)
+        if tracks:
+            self._add_tracks(ctx, tracks, player, start_at=0)
 
-            embed = discord.Embed(color=ctx.guild.me.top_role.color,
-                        description=f"Queued First: `{len(tracks)}` músicas da playlist"
-                                    f"**{results['playlistInfo']['name']}**. [{ctx.author.mention}]")
-        else:
-            track = tracks[0]
-            self._add_tracks(ctx, [track], player, index=0)
+            await ctx.send(embed=embed)
 
-            embed = discord.Embed(color=ctx.guild.me.top_role.color,
-                        description=f"Queued First: [{track['info']['title']}]({track['info']['uri']})  "
-                                    f"[{ctx.author.mention}]") 
-    
-        await ctx.send(embed=embed)
-
-        if not player.is_playing:
-            await player.play()
+            if not player.is_playing:
+                await player.play()
 
     @commands.command(name='queue', aliases=['q'])
     @has_user_permission()
@@ -249,7 +227,7 @@ class MusicCommands(commands.Cog):
 
         entries = player.queue
 
-        pages = PaginatorSource(entries=entries, player=player)
+        pages = QueuePaginatorSource(entries=entries, player=player)
         paginator = menus.MenuPages(source=pages, timeout=120, delete_message_after=True)
         
         await paginator.start(ctx)
@@ -338,6 +316,7 @@ class MusicCommands(commands.Cog):
     @commands.command()
     @has_dj_permission()
     async def volume(self, ctx, volume: int):
+        # TODO: 'volume' shows the volume. 'volume <volume_number>' set volume (only with DJ permission)
         player = self._get_player(ctx)
 
         volume = max(min(volume, 1000), 0)
@@ -389,12 +368,31 @@ class MusicCommands(commands.Cog):
 
         await self.connect_to(ctx.guild.id, None)
         if channel:
-            await ctx.send(f"Desconectado do canal `{channel.name}`")    
+            await ctx.send(f"Desconectado do canal `{channel.name}`")
+
+    @commands.command()
+    async def playtwo(self, ctx):
+        player = self._get_player(ctx)
+        with open(os.path.dirname(os.path.abspath(__file__))+'\\musics.json', 'w') as file:
+            json_file = [{
+                'author': track.author,
+                'duration': track.duration,
+                'extra': track.extra,
+                'identifier': track.identifier,
+                'is_seekable': track.is_seekable,
+                'requester': track.requester,
+                'stream': track.stream,
+                'title': track.title,
+                'track': track.track,
+                'uri': track.uri
+            } for track in player.queue]
+            json.dump(json_file, file, indent=2)
+
 
     def _get_player(self, ctx: discord.ext.commands.Context):
         return self.client.lavalink.player_manager.get(ctx.guild.id)
 
-    async def _search_tracks(self, query, player: lavalink.DefaultPlayer):
+    async def _search_tracks(self, query: str, player: lavalink.DefaultPlayer):
         result = await player.node.get_tracks(query)
         
         if not result or not result['tracks']:
@@ -402,22 +400,63 @@ class MusicCommands(commands.Cog):
         else:
             return result
 
-    def _add_tracks(self, ctx: commands.Context, tracks: list, player: lavalink.DefaultPlayer, index: int = None):        
+    async def _convert_result(self, ctx: commands.Context, search: Query, result: dict, queue_first=False) -> Tuple[list, Union[discord.Embed, None]]:
+        tracks: List[dict] = list()
+        embed: Union[discord.Embed, None] = None
+
+        if result['loadType'] == 'SEARCH_RESULT':
+            if search.first_song:
+                track = result['tracks'][0]
+                tracks.append(track)
+
+            else:
+                if (track := await SelectSong(result['tracks']).prompt(ctx)):
+                    tracks.append(track)
+                    embed = self._build_queued_message(ctx, track, queue_first)
+                else:
+                    await ctx.send("Nenhuma música foi selecionada!", delete_after=3)
+
+        elif result['loadType'] == 'TRACK_LOADED':
+            track = result['tracks'][0]
+            tracks.append(track)
+
+            embed = self._build_queued_message(ctx, track, queue_first)
+        
+        elif result['loadType'] == 'PLAYLIST_LOADED':
+            for track in result['tracks']:
+                tracks.append(track)
+
+            embed = self._build_queued_playlist_message(ctx, result, queue_first)
+
+        return tracks, embed
+
+    def _build_queued_message(self, ctx: commands.Context, track: dict, queue_first: bool) -> discord.Embed:
+        return discord.Embed(color=ctx.guild.me.top_role.color,
+                        description=f"{'Queued First' if queue_first else 'Queued'}: [{track['info']['title']}]({track['info']['uri']})  [{ctx.author.mention}]")
+
+    def _build_queued_playlist_message(self, ctx: commands.Context, result: dict, queue_first: bool) -> discord.Embed:
+        return discord.Embed(color=ctx.guild.me.top_role.color,
+                        description=f"{'Queued First' if queue_first else 'Queued'}: `{len(result['tracks'])}` músicas da playlist **{result['playlistInfo']['name']}**.  [{ctx.author.mention}]")
+
+    def _add_tracks(self, ctx: commands.Context, tracks: list, player: lavalink.DefaultPlayer, start_at: int = None):        
+        if len(tracks) > 1 and start_at is not None:
+            tracks = reversed(tracks)
+
         for track in tracks:
             track = lavalink.AudioTrack(track, requester=ctx.author.id, requester_name=ctx.author.name)
             
             player.add(
                 requester=ctx.author.id, 
                 track=track, 
-                index=index,
+                index=start_at,
             )
 
             if player.is_shuffled():
-                if index is not None:
-                    player.original_queue.insert(index, track)
+                if start_at is not None:
+                    player.original_queue.insert(start_at, track)
                 else:
                     player.original_queue.append(track)
-    
+
     def _build_playing_now(self, guild: discord.Guild, track: lavalink.AudioTrack, player: lavalink.DefaultPlayer):
         embed = discord.Embed(color=guild.me.top_role.color, title="**Playing Now**",
                             description=f"[{track.title}]({track.uri})  [<@{track.requester}>]")
@@ -455,6 +494,7 @@ class MusicCommands(commands.Cog):
         
         elif isinstance(error, commands.CommandInvokeError):
             await ctx.send(error.original)
+            raise error
         
         else:
             raise error

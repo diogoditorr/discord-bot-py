@@ -113,30 +113,9 @@ class Permissions:
 
         return obj    
 
-    async def _create_new_entry(self, ctx: commands.Context):
-        everyone_role = get(ctx.author.roles, position=0)
-
-        await self.connection.execute("INSERT INTO player_permissions VALUES (?,?,?,?,?,?,?)", 
-                    (ctx.guild.id, '[]', '[]', f"['{everyone_role.id}']", '[]', f"['{everyone_role.id}']", '[]'))
-        await self.connection.commit()
-
-    async def _fetch_guild_perms(self, ctx: commands.Context):
-        self.cursor = await self.connection.execute("""
-            SELECT admin_roles, admin_members, 
-            dj_roles, dj_members, 
-            user_roles, user_members
-            
-            FROM player_permissions
-            WHERE guild_id = ?
-        """, (ctx.guild.id,))
-        
-        perms = await self.cursor.fetchone()
-        
-        return perms if perms else None
-
     async def update(self, perms: PlayerPermissions):
         if not isinstance(perms, PlayerPermissions):
-            raise TypeError("Object is not an instance of PlayerPermissions")
+            raise TypeError("'{}' is not an instance of PlayerPermissions".format(type(perms).__name__))
 
         list_permissions = [perms.admin.roles, perms.admin.members,
             perms.dj.roles, perms.dj.members,
@@ -154,6 +133,28 @@ class Permissions:
             WHERE guild_id = ?
         """, parameters)
         await self.connection.commit()
+
+    async def _fetch_guild_perms(self, ctx: commands.Context):
+        self.cursor = await self.connection.execute("""
+            SELECT admin_roles, admin_members, 
+            dj_roles, dj_members, 
+            user_roles, user_members
+            
+            FROM player_permissions
+            WHERE guild_id = ?
+        """, (ctx.guild.id,))
+        
+        perms = await self.cursor.fetchone()
+        
+        return perms if perms else None
+
+    async def _create_new_entry(self, ctx: commands.Context):
+        everyone_role = get(ctx.author.roles, position=0)
+
+        await self.connection.execute("INSERT INTO player_permissions VALUES (?,?,?,?,?,?,?)", 
+                    (ctx.guild.id, '[]', '[]', f"['{everyone_role.id}']", '[]', f"['{everyone_role.id}']", '[]'))
+        await self.connection.commit()
+
 
     def __repr__(self):
         return '<Permissions>'

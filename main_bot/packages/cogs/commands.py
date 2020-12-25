@@ -3,7 +3,7 @@ import time
 import random
 from discord.ext import commands
 
-from database.database import Database
+from ..database.database import Database
 
 def permsVerify(context):
     perm = ['Admins']
@@ -31,7 +31,7 @@ class Commands(commands.Cog):
         else:
             prefix = " ".join(args)
 
-            await database.prefix.change_prefix(ctx.guild, prefix)
+            await database.prefix.update(ctx.guild, prefix)
             await ctx.send("O prefixo do servidor mudou!\n"
                           f"Utilize qualquer comando agora com o prefixo:  `{prefix}`")
 

@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
 
-from database.database import Database
-from database.exceptions import PlayerPermissionError
+from ..database.database import Database
+from ..database.exceptions import PlayerPermissionError
 
 
 def has_admin_permission():

@@ -1,8 +1,10 @@
 import discord
 from discord.ext import commands, menus
 
+from .utils import convert_duration
 
-class PaginatorSource(menus.ListPageSource):
+
+class QueuePaginatorSource(menus.ListPageSource):
 
     def __init__(self, entries, player, per_page=10):
         super().__init__(entries, per_page=per_page)
@@ -40,3 +42,48 @@ class PaginatorSource(menus.ListPageSource):
 
     def is_paginating(self):
         return True
+
+
+class SelectSong(menus.Menu):
+    def __init__(self, tracks):
+        super().__init__(timeout=30.0, delete_message_after=True)
+        self.tracks = tracks
+        self.result = None
+
+    async def send_initial_message(self, ctx, channel):
+        msg = '**_Selecione uma faixa clicando no emoji correspondente._**\n'
+    
+        for index in range(0, 5):
+            track = self.tracks[index]['info']
+            msg = msg + f"**{(index + 1)})** {track['title']} **- ({convert_duration(track['length'])})**\n"
+        
+        return await channel.send(msg)
+        
+    @menus.button('1️⃣')
+    async def first(self, payload):
+        self.result = self.tracks[0]
+        self.stop()
+
+    @menus.button('2️⃣')
+    async def second(self, payload):
+        self.result = self.tracks[1]
+        self.stop()
+
+    @menus.button('3️⃣')
+    async def third(self, payload):
+        self.result = self.tracks[2]
+        self.stop()
+
+    @menus.button('4️⃣')
+    async def fourth(self, payload):
+        self.result = self.tracks[3]
+        self.stop()
+
+    @menus.button('5️⃣')
+    async def fifth(self, payload):
+        self.result = self.tracks[4]
+        self.stop()
+
+    async def prompt(self, ctx):
+        await self.start(ctx, wait=True)
+        return self.result
