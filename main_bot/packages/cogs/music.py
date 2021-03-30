@@ -1,17 +1,15 @@
 import re
-import os
-import json
 import random
 from typing import Union, Tuple, List
 
-import lavalink
 import discord
 from discord.ext import commands, menus
 from discord.utils import get
 from jishaku import Jishaku, JishakuBase
+import lavalink
 
 from ..modules.menu import QueuePaginatorSource, SelectSong
-from ..modules.decorators import (has_admin_permission, has_dj_permission, has_user_permission)
+from ..modules.decorators import (has_dj_permission, has_user_permission)
 from ..modules.handler import Query
 from ..database.exceptions import PlayerPermissionError
 
@@ -24,9 +22,9 @@ def is_shuffled(player: lavalink.DefaultPlayer) -> bool:
 
 
 class MusicCommands(commands.Cog):
-    DEFAULT_VOLUME = 5
+    DEFAULT_VOLUME = 15
 
-    def __init__(self, client):
+    def __init__(self, client: commands.Bot):
         self.client = client
 
         if not hasattr(client, 'lavalink'):
@@ -38,21 +36,22 @@ class MusicCommands(commands.Cog):
                 region='brazil',
                 name='default-node'
             )
-            self.client.add_listener(self.client.lavalink.voice_update_handler, 'on_socket_response')
+            self.client.add_listener(
+                self.client.lavalink.voice_update_handler, 'on_socket_response')
 
-            lavalink.DefaultPlayer.is_shuffled = is_shuffled  # Add an instance method in lavalink.DefaultPlayer class
-
+            # Add an instance method in lavalink.DefaultPlayer class
+            lavalink.DefaultPlayer.is_shuffled = is_shuffled
 
         self.client.lavalink.add_event_hook(self.track_hook)
 
-    async def track_hook(self, event):
+    async def track_hook(self, event: lavalink.Event):
         if isinstance(event, lavalink.TrackEndEvent):
             repeat_single = event.player.fetch('repeat_single')
 
             if repeat_single and event.reason == 'FINISHED':
                 event.player.add(
-                    track=event.player.current, 
-                    requester=event.player.current.requester, 
+                    track=event.player.current,
+                    requester=event.player.current.requester,
                     index=0
                 )
 
@@ -64,26 +63,28 @@ class MusicCommands(commands.Cog):
 
         if isinstance(event, lavalink.TrackStartEvent):
             if event.player.is_shuffled():
-                event.player.original_queue = self._remove_queue_track(event.player.original_queue, event.track)
-            
+                event.player.original_queue = self._remove_queue_track(
+                    event.player.original_queue, event.track)
+
             try:
                 await event.player.fetch('playing_now_message').delete()
-            except:
+            except Exception:
                 pass
 
             channel_text = event.player.fetch('channel')
             guild = get(self.client.guilds, id=int(event.player.guild_id))
-        
+
             if channel_text and guild:
-                embed = self._build_playing_now(guild, event.track, event.player)
+                embed = self._build_playing_now(
+                    guild, event.track)
                 playing_now_message = await channel_text.send(embed=embed)
-                
+
                 event.player.store('playing_now_message', playing_now_message)
 
         if isinstance(event, lavalink.events.QueueEndEvent):
             guild_id = int(event.player.guild_id)
             await self.connect_to(guild_id, None)
-    
+
     async def connect_to(self, guild_id: int, channel_id: Union[str, None]):
         """ Connects to the given voicechannel ID. A channel_id of `None` means disconnect. """
         websocket = self.client._connection._get_websocket(guild_id)
@@ -97,7 +98,7 @@ class MusicCommands(commands.Cog):
     # async def cog_command_error(self, ctx, error):
     #     if isinstance(error, commands.CommandInvokeError):
     #         await ctx.send(error.original)
-    
+
     async def cog_before_invoke(self, ctx):
         """ Command before-invoke handler. """
         guild_check = ctx.guild is not None
@@ -114,16 +115,14 @@ class MusicCommands(commands.Cog):
         def author_not_connected(ctx):
             return not ctx.author.voice or not ctx.author.voice.channel
 
-
         def is_author_in_different_channel(ctx, player) -> bool:
             return int(player.channel_id) != ctx.author.voice.channel.id
-
 
         def check_channel_permissions(ctx):
             permissions = ctx.author.voice.channel.permissions_for(ctx.me)
             if not permissions.connect or not permissions.speak:  # Check user limit too?
-                raise commands.CommandInvokeError('I need the `CONNECT` and `SPEAK` permissions.')
-
+                raise commands.CommandInvokeError(
+                    'I need the `CONNECT` and `SPEAK` permissions.')
 
         async def connect_to_user_voice_channel(ctx, player):
             if author_not_connected(ctx):
@@ -134,16 +133,16 @@ class MusicCommands(commands.Cog):
             player.store('channel', ctx.channel)
             await self.connect_to(ctx.guild.id, ctx.author.voice.channel.id)
 
-
         if (player := self._get_player(ctx)) is None:
-            player = self.client.lavalink.player_manager.create(ctx.guild.id, endpoint=str(ctx.guild.region))
+            player = self.client.lavalink.player_manager.create(
+                ctx.guild.id, endpoint=str(ctx.guild.region))
             await player.set_volume(MusicCommands.DEFAULT_VOLUME)
 
-        bot_should_be_connected_command = ctx.command.name in ('queue', 'pause', 'resume', 'repeat', 
-            'shuffle', 'next', 'skip', 'volume', 'stop')
+        bot_should_be_connected_command = ctx.command.name in ('queue', 'pause', 'resume', 'repeat',
+                                                               'shuffle', 'next', 'skip', 'volume', 'stop')
         bot_should_connect_command = ctx.command.name in ('play', 'playnext')
-        same_channel_command = not (ctx.command.name in ('queue',))
-        is_a_connection_command = ctx.command.name == 'join'        
+        same_channel_command = not ctx.command.name in ('queue',)
+        is_a_connection_command = ctx.command.name == 'join'
 
         if is_a_connection_command:
             if author_not_connected(ctx):
@@ -157,8 +156,9 @@ class MusicCommands(commands.Cog):
                 pass
 
             elif bot_should_be_connected_command and is_author_in_different_channel(ctx, player) \
-             and same_channel_command:
-                raise commands.CommandInvokeError('You need to be in my voicechannel.')
+                    and same_channel_command:
+                raise commands.CommandInvokeError(
+                    'You need to be in my voicechannel.')
 
             elif bot_should_connect_command:
                 await connect_to_user_voice_channel(ctx, player)
@@ -175,9 +175,6 @@ class MusicCommands(commands.Cog):
         # Except: Execute command that must be in the same channel (pause, resume, repeat, shuffle, etc...)
         # Execute command without entering the same channel but must be connected (queue)
 
-
-
-
     @commands.command(aliases=['p'])
     @has_user_permission()
     async def play(self, ctx, *, search: Query):
@@ -185,7 +182,7 @@ class MusicCommands(commands.Cog):
 
         if not (result := await self._search_tracks(search.query, player)):
             return await ctx.send('Desculpe, mas não achei nenhum resultado. Tente novamente.')
-        
+
         tracks, embed = await self._convert_result(ctx, search, result)
 
         if tracks:
@@ -195,7 +192,7 @@ class MusicCommands(commands.Cog):
 
             if not player.is_playing:
                 await player.play()
-            
+
     @commands.command()
     @has_user_permission()
     async def playnext(self, ctx, *, search: Query):
@@ -228,8 +225,9 @@ class MusicCommands(commands.Cog):
         entries = player.queue
 
         pages = QueuePaginatorSource(entries=entries, player=player)
-        paginator = menus.MenuPages(source=pages, timeout=120, delete_message_after=True)
-        
+        paginator = menus.MenuPages(
+            source=pages, timeout=120, delete_message_after=True)
+
         await paginator.start(ctx)
 
     @commands.command()
@@ -263,17 +261,17 @@ class MusicCommands(commands.Cog):
             player.repeat = False  # Do not append the current song to the queue
             player.store('repeat_single', 'True')
             await ctx.send('Repetindo a faixa atual.')
-        
+
         elif repeat_mode == 'all':
             player.repeat = True
             player.delete('repeat_single')
             await ctx.send('Repetindo todas as faixas.')
-        
+
         elif repeat_mode == 'off':
             player.repeat = False
             player.delete('repeat_single')
             await ctx.send('Desligando repetição.')
-        
+
         else:
             await ctx.send(f'Use `{await self.client.get_prefix(ctx)}single | all | off` para ativar/desativar a repetição.')
 
@@ -294,7 +292,7 @@ class MusicCommands(commands.Cog):
             player.original_queue = player.queue
             player.queue = random.sample(player.queue, len(player.queue))
             await ctx.send("O reprodutor agora está em modo aleatório.")
-        
+
     @commands.command(name='next')
     @has_user_permission()
     async def _next(self, ctx):
@@ -303,8 +301,8 @@ class MusicCommands(commands.Cog):
         if not player.is_connected:
             return await ctx.send("Não estou conectado.")
 
-        if ctx.author.voice == None or \
-         (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+        if ctx.author.voice is None or \
+                (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             return await ctx.send("Você não está no mesmo canal de voz que eu!")
 
         if not player.queue and not player.current:
@@ -355,12 +353,12 @@ class MusicCommands(commands.Cog):
         """ Disconnects the player from the voice channel and clears its queue. """
         channel = ctx.message.author.voice.channel
         player = self._get_player(ctx)
-        
+
         if not player.is_connected:
             return await ctx.send("Não estou conectado.")
 
-        if ctx.author.voice == None or \
-         (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+        if ctx.author.voice is None or \
+                (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
             return await ctx.send("Você não está no mesmo canal de voz que eu!")
 
         player.queue.clear()
@@ -370,35 +368,34 @@ class MusicCommands(commands.Cog):
         if channel:
             await ctx.send(f"Desconectado do canal `{channel.name}`")
 
-    @commands.command()
-    async def playtwo(self, ctx):
-        player = self._get_player(ctx)
-        with open(os.path.dirname(os.path.abspath(__file__))+'\\musics.json', 'w') as file:
-            json_file = [{
-                'author': track.author,
-                'duration': track.duration,
-                'extra': track.extra,
-                'identifier': track.identifier,
-                'is_seekable': track.is_seekable,
-                'requester': track.requester,
-                'stream': track.stream,
-                'title': track.title,
-                'track': track.track,
-                'uri': track.uri
-            } for track in player.queue]
-            json.dump(json_file, file, indent=2)
-
+    # @commands.command()
+    # async def playtwo(self, ctx):
+    #     player = self._get_player(ctx)
+    #     with open(os.path.dirname(os.path.abspath(__file__))+'\\musics.json', 'w') as file:
+    #         json_file = [{
+    #             'author': track.author,
+    #             'duration': track.duration,
+    #             'extra': track.extra,
+    #             'identifier': track.identifier,
+    #             'is_seekable': track.is_seekable,
+    #             'requester': track.requester,
+    #             'stream': track.stream,
+    #             'title': track.title,
+    #             'track': track.track,
+    #             'uri': track.uri
+    #         } for track in player.queue]
+    #         json.dump(json_file, file, indent=2)
 
     def _get_player(self, ctx: discord.ext.commands.Context):
         return self.client.lavalink.player_manager.get(ctx.guild.id)
 
     async def _search_tracks(self, query: str, player: lavalink.DefaultPlayer):
         result = await player.node.get_tracks(query)
-        
+
         if not result or not result['tracks']:
             return None
-        else:
-            return result
+
+        return result
 
     async def _convert_result(self, ctx: commands.Context, search: Query, result: dict, queue_first=False) -> Tuple[list, Union[discord.Embed, None]]:
         tracks: List[dict] = list()
@@ -421,33 +418,35 @@ class MusicCommands(commands.Cog):
             tracks.append(track)
 
             embed = self._build_queued_message(ctx, track, queue_first)
-        
+
         elif result['loadType'] == 'PLAYLIST_LOADED':
             for track in result['tracks']:
                 tracks.append(track)
 
-            embed = self._build_queued_playlist_message(ctx, result, queue_first)
+            embed = self._build_queued_playlist_message(
+                ctx, result, queue_first)
 
         return tracks, embed
 
     def _build_queued_message(self, ctx: commands.Context, track: dict, queue_first: bool) -> discord.Embed:
         return discord.Embed(color=ctx.guild.me.top_role.color,
-                        description=f"{'Queued First' if queue_first else 'Queued'}: [{track['info']['title']}]({track['info']['uri']})  [{ctx.author.mention}]")
+                             description=f"{'Queued First' if queue_first else 'Queued'}: [{track['info']['title']}]({track['info']['uri']})  [{ctx.author.mention}]")
 
     def _build_queued_playlist_message(self, ctx: commands.Context, result: dict, queue_first: bool) -> discord.Embed:
         return discord.Embed(color=ctx.guild.me.top_role.color,
-                        description=f"{'Queued First' if queue_first else 'Queued'}: `{len(result['tracks'])}` músicas da playlist **{result['playlistInfo']['name']}**.  [{ctx.author.mention}]")
+                             description=f"{'Queued First' if queue_first else 'Queued'}: `{len(result['tracks'])}` músicas da playlist **{result['playlistInfo']['name']}**.  [{ctx.author.mention}]")
 
-    def _add_tracks(self, ctx: commands.Context, tracks: list, player: lavalink.DefaultPlayer, start_at: int = None):        
+    def _add_tracks(self, ctx: commands.Context, tracks: list, player: lavalink.DefaultPlayer, start_at: int = None):
         if len(tracks) > 1 and start_at is not None:
             tracks = reversed(tracks)
 
         for track in tracks:
-            track = lavalink.AudioTrack(track, requester=ctx.author.id, requester_name=ctx.author.name)
-            
+            track = lavalink.AudioTrack(
+                track, requester=ctx.author.id, requester_name=ctx.author.name)
+
             player.add(
-                requester=ctx.author.id, 
-                track=track, 
+                requester=ctx.author.id,
+                track=track,
                 index=start_at,
             )
 
@@ -457,9 +456,9 @@ class MusicCommands(commands.Cog):
                 else:
                     player.original_queue.append(track)
 
-    def _build_playing_now(self, guild: discord.Guild, track: lavalink.AudioTrack, player: lavalink.DefaultPlayer):
+    def _build_playing_now(self, guild: discord.Guild, track: lavalink.AudioTrack):
         embed = discord.Embed(color=guild.me.top_role.color, title="**Playing Now**",
-                            description=f"[{track.title}]({track.uri})  [<@{track.requester}>]")
+                              description=f"[{track.title}]({track.uri})  [<@{track.requester}>]")
 
         return embed
 
@@ -473,29 +472,29 @@ class MusicCommands(commands.Cog):
 
     @join.error
     @leave.error
-    @_next.error             
-    @pause.error            
-    @play.error             
-    @playnext.error         
+    @_next.error
+    @pause.error
+    @play.error
+    @playnext.error
     @_queue.error
-    @repeat.error           
-    @resume.error      
-    @shuffle.error       
+    @repeat.error
+    @resume.error
+    @shuffle.error
     @stop.error
     @volume.error
     @JishakuBase.jsk_su.error
     async def error_handler(self, ctx, error):
         prefix = await self.bot.get_prefix(ctx) if isinstance(self, Jishaku) \
-                    else await self.client.get_prefix(ctx)
+            else await self.client.get_prefix(ctx)
 
         if isinstance(error, PlayerPermissionError):
             await ctx.send(f"Você precisa ter a permissão de **{error.permission}** para isso.\n"
                            f"Veja a lista utilizando `{prefix}{error.permission.lower()} list`")
-        
+
         elif isinstance(error, commands.CommandInvokeError):
             await ctx.send(error.original)
             raise error
-        
+
         else:
             raise error
 

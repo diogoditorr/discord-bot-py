@@ -3,13 +3,11 @@ import os
 import sys
 import site
 from discord.ext import commands
+from pathlib import Path
 
 import settings  # Import of settings
 from packages.cogs.tasks import Tasks
 from packages.database.database import Database
-
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
 
 async def get_prefix(bot, message: discord.Message):
     database = await Database.connect()
@@ -21,10 +19,19 @@ async def get_prefix(bot, message: discord.Message):
 
 
 # --------Configuration--------
+# os.chdir(os.path.dirname(os.path.abspath(__file__)))
+PWD = Path(os.path.dirname(__file__))
+
 BOT_TOKEN = settings.bot_token()
-COGS_PATH = f'{sys.path[0]}\packages\cogs'
+COGS_PATH = PWD.joinpath('packages', 'cogs')
 COGS_MODULE_NAME='packages.cogs'
 on_start = True
+
+# print("CWD:", os.getcwd())
+# print("FILE:", __file__)
+# print("PWD", PWD)
+# print("COGS_PATH:", COGS_PATH)
+# print("Files:", os.listdir(COGS_PATH))
 
 intents = discord.Intents.default()
 intents.members = True

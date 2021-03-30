@@ -1,3 +1,4 @@
+from __future__ import annotations
 import ast
 from typing import Union
 
@@ -49,7 +50,7 @@ class UserPermission(BasePermissionPlayer):
         return '<UserPermission>'
 
 
-class PlayerPermissions():    
+class PlayerPermissions():
     def __init__(self, guild: discord.Guild, perms: tuple):
         self.guild = guild
         self.admin = AdminPermission()
@@ -96,22 +97,17 @@ class PlayerPermissions():
 
 
 class Permissions:
-
-    @classmethod
-    async def _create_instance(cls, connection: aiosqlite.Connection):
-        self = Permissions()
+    def __init__(self, connection: aiosqlite.Connection):
         self.connection = connection
-        return self
 
-    async def get(self, ctx: commands.Context):
+    async def get(self, ctx: commands.Context) -> PlayerPermissions:
+        """Returns a PlayerPermissions object"""
         perms = await self._fetch_guild_perms(ctx)
         if not perms:
             await self._create_new_entry(ctx)
             perms = await self._fetch_guild_perms(ctx)
 
-        obj = PlayerPermissions(ctx.guild, perms)
-
-        return obj    
+        return PlayerPermissions(ctx.guild, perms)
 
     async def update(self, perms: PlayerPermissions):
         if not isinstance(perms, PlayerPermissions):

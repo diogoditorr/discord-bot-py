@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands, menus
 
+
 class Menus(commands.Cog):
 
     def __init__(self, client):
@@ -20,7 +21,7 @@ class Menus(commands.Cog):
     @commands.command()
     async def list_page_source(self, ctx):
         pages = menus.MenuPages(
-            source=PaginatorSource(range(1, 100)), 
+            source=PaginatorSource(range(1, 100)),
             clear_reactions_after=True
         )
         await pages.start(ctx)
@@ -79,6 +80,6 @@ class Confirm(menus.Menu):
         await self.start(ctx, wait=True)
         return self.result
 
-    
+
 def setup(client):
     client.add_cog(Menus(client))

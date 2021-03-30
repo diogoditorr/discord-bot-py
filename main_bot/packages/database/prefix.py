@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 from typing import Union
 
@@ -8,12 +9,8 @@ import discord
 class Prefix:
     DEFAULT = '.'
 
-    @classmethod
-    async def _create_instance(cls, connection: aiosqlite.Connection):
-        self = Prefix()
+    def __init__(self, connection: aiosqlite.Connection):
         self.connection = connection
-
-        return self
 
     async def get(self, guild: discord.Guild) -> str: 
         prefix = await self._fetch_guild_prefix(guild)
@@ -50,6 +47,6 @@ class Prefix:
         await self.connection.commit()
 
     def __repr__(self):
-        return "<Prefix object>"
+        return "<Prefix>"
 
 

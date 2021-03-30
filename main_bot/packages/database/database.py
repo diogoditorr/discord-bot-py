@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 
 import aiosqlite
@@ -10,14 +11,16 @@ PWD = os.path.abspath(os.path.dirname(__file__))
 
 
 class Database:
-    @classmethod
-    async def connect(cls):
-        self = Database()
-        self.connection = await aiosqlite.connect(os.path.realpath(PWD + '\guilds_database.sqlite'))
-        self.prefix = await Prefix._create_instance(self.connection)
-        self.player_permissions = await Permissions._create_instance(self.connection)
+    def __init__(self, connection: aiosqlite.Connection):
+        self.connection = connection
+        self.prefix = Prefix(self.connection)
+        self.player_permissions = Permissions(self.connection)
 
-        return self
+    @classmethod
+    async def connect(cls) -> Database:
+        connection = await aiosqlite.connect(os.path.realpath(PWD + '\guilds_database.sqlite'))
+        
+        return Database(connection)
 
     @classmethod
     async def create(cls):

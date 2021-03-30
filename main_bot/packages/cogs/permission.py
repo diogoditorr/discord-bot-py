@@ -10,10 +10,10 @@ from ..database.player_permissions import PlayerPermissions
 
 class PermissionCommands(commands.Cog):
 
-    def __init__(self, client):
+    def __init__(self, client: commands.Bot):
         self.client = client
 
-    async def cog_before_invoke(self, ctx):
+    async def cog_before_invoke(self, ctx: commands.Context):
         """ Command before-invoke handler. """
         guild_check = ctx.guild is not None
         ctx.author = await ctx.guild.fetch_member(ctx.author.id) or ctx.author
@@ -21,7 +21,7 @@ class PermissionCommands(commands.Cog):
         return guild_check
 
     @commands.command()
-    async def admin(self, ctx, mode: str, id_mentioned: Optional[Union[discord.Member, discord.Role, str]]):
+    async def admin(self, ctx: commands.Context, mode: str, id_mentioned: Optional[Union[discord.Member, discord.Role, str]]):
         db = await Database.connect()
         perms = await db.player_permissions.get(ctx)
 
