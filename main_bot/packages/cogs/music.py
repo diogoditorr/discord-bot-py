@@ -1,16 +1,18 @@
 import re
 import random
-from typing import Union, Tuple, List
+from typing import Dict, Iterator, Optional, Union, Tuple, List
+import typing
 
 import discord
 from discord.ext import commands, menus
+from discord.ext.commands import Context
 from discord.utils import get
 from jishaku import Jishaku, JishakuBase
 import lavalink
 
 from ..modules.menu import QueuePaginatorSource, SelectSong
 from ..modules.decorators import (has_dj_permission, has_user_permission)
-from ..modules.handler import Query
+from ..modules.handler import Query, Result
 from ..database.exceptions import PlayerPermissionError
 
 
@@ -27,22 +29,22 @@ class MusicCommands(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
 
-        if not hasattr(client, 'lavalink'):
-            self.client.lavalink = lavalink.Client(self.client.user.id)
-            self.client.lavalink.add_node(
+        if not hasattr(self, 'lavalink'):
+            self.lavalink = lavalink.Client(self.client.user.id)
+            self.lavalink.add_node(
                 host='localhost',
-                port=3300,
+                port=3434,
                 password='testing',
                 region='brazil',
                 name='default-node'
             )
             self.client.add_listener(
-                self.client.lavalink.voice_update_handler, 'on_socket_response')
+                self.lavalink.voice_update_handler, 'on_socket_response')
 
             # Add an instance method in lavalink.DefaultPlayer class
             lavalink.DefaultPlayer.is_shuffled = is_shuffled
 
-        self.client.lavalink.add_event_hook(self.track_hook)
+        self.lavalink.add_event_hook(self.track_hook)
 
     async def track_hook(self, event: lavalink.Event):
         if isinstance(event, lavalink.TrackEndEvent):
@@ -92,12 +94,12 @@ class MusicCommands(commands.Cog):
 
     def cog_unload(self):
         """ Cog unload handler. This removes any event hooks that were registered. """
-        self.client.lavalink._event_hooks.clear()
+        self.lavalink._event_hooks.clear()
 
     # Local error_handler() will be executed instead
-    # async def cog_command_error(self, ctx, error):
-    #     if isinstance(error, commands.CommandInvokeError):
-    #         await ctx.send(error.original)
+    async def cog_command_error(self, ctx, error):
+        if isinstance(error, commands.CommandInvokeError):
+            await ctx.send(error.original)
 
     async def cog_before_invoke(self, ctx):
         """ Command before-invoke handler. """
@@ -134,7 +136,7 @@ class MusicCommands(commands.Cog):
             await self.connect_to(ctx.guild.id, ctx.author.voice.channel.id)
 
         if (player := self._get_player(ctx)) is None:
-            player = self.client.lavalink.player_manager.create(
+            player: lavalink.DefaultPlayer = self.lavalink.player_manager.create(
                 ctx.guild.id, endpoint=str(ctx.guild.region))
             await player.set_volume(MusicCommands.DEFAULT_VOLUME)
 
@@ -183,7 +185,7 @@ class MusicCommands(commands.Cog):
         if not (result := await self._search_tracks(search.query, player)):
             return await ctx.send('Desculpe, mas não achei nenhum resultado. Tente novamente.')
 
-        tracks, embed = await self._convert_result(ctx, search, result)
+        tracks, embed = await Result.parse(ctx, search, result)
 
         if tracks:
             self._add_tracks(ctx, tracks, player)
@@ -201,7 +203,12 @@ class MusicCommands(commands.Cog):
         if not (result := await self._search_tracks(search.query, player)):
             return await ctx.send('Desculpe, mas não achei nenhum resultado. Tente novamente.')
 
-        tracks, embed = await self._convert_result(ctx, search, result, queue_first=True)
+        tracks, embed = await Result.parse(ctx, search, result, queue_first=True)
+
+        # tracks = await result_query.get_tracks()
+        # embed = result_query.get_embed(tracks)
+
+        # tracks, embed = await self._convert_result(ctx, search, result, queue_first=True)
 
         if tracks:
             self._add_tracks(ctx, tracks, player, start_at=0)
@@ -313,14 +320,17 @@ class MusicCommands(commands.Cog):
 
     @commands.command()
     @has_dj_permission()
-    async def volume(self, ctx, volume: int):
+    async def volume(self, ctx, volume: Optional[int]):
         # TODO: 'volume' shows the volume. 'volume <volume_number>' set volume (only with DJ permission)
         player = self._get_player(ctx)
 
-        volume = max(min(volume, 1000), 0)
-        await player.set_volume(volume)
+        if volume:
+            volume = max(min(volume, 1000), 0)
+            await player.set_volume(volume)
 
-        await ctx.send(f"O volume foi do player alterado para `{volume}`")
+            await ctx.send(f"O volume foi do player alterado para `{volume}`")
+        else:
+            await ctx.send(f"O volume atual é `{player.volume}`")
 
     @commands.command()
     @has_dj_permission()
@@ -386,8 +396,8 @@ class MusicCommands(commands.Cog):
     #         } for track in player.queue]
     #         json.dump(json_file, file, indent=2)
 
-    def _get_player(self, ctx: discord.ext.commands.Context):
-        return self.client.lavalink.player_manager.get(ctx.guild.id)
+    def _get_player(self, ctx: Context) -> lavalink.DefaultPlayer:
+        return self.lavalink.player_manager.get(ctx.guild.id)
 
     async def _search_tracks(self, query: str, player: lavalink.DefaultPlayer):
         result = await player.node.get_tracks(query)
@@ -397,46 +407,7 @@ class MusicCommands(commands.Cog):
 
         return result
 
-    async def _convert_result(self, ctx: commands.Context, search: Query, result: dict, queue_first=False) -> Tuple[list, Union[discord.Embed, None]]:
-        tracks: List[dict] = list()
-        embed: Union[discord.Embed, None] = None
-
-        if result['loadType'] == 'SEARCH_RESULT':
-            if search.first_song:
-                track = result['tracks'][0]
-                tracks.append(track)
-
-            else:
-                if (track := await SelectSong(result['tracks']).prompt(ctx)):
-                    tracks.append(track)
-                    embed = self._build_queued_message(ctx, track, queue_first)
-                else:
-                    await ctx.send("Nenhuma música foi selecionada!", delete_after=3)
-
-        elif result['loadType'] == 'TRACK_LOADED':
-            track = result['tracks'][0]
-            tracks.append(track)
-
-            embed = self._build_queued_message(ctx, track, queue_first)
-
-        elif result['loadType'] == 'PLAYLIST_LOADED':
-            for track in result['tracks']:
-                tracks.append(track)
-
-            embed = self._build_queued_playlist_message(
-                ctx, result, queue_first)
-
-        return tracks, embed
-
-    def _build_queued_message(self, ctx: commands.Context, track: dict, queue_first: bool) -> discord.Embed:
-        return discord.Embed(color=ctx.guild.me.top_role.color,
-                             description=f"{'Queued First' if queue_first else 'Queued'}: [{track['info']['title']}]({track['info']['uri']})  [{ctx.author.mention}]")
-
-    def _build_queued_playlist_message(self, ctx: commands.Context, result: dict, queue_first: bool) -> discord.Embed:
-        return discord.Embed(color=ctx.guild.me.top_role.color,
-                             description=f"{'Queued First' if queue_first else 'Queued'}: `{len(result['tracks'])}` músicas da playlist **{result['playlistInfo']['name']}**.  [{ctx.author.mention}]")
-
-    def _add_tracks(self, ctx: commands.Context, tracks: list, player: lavalink.DefaultPlayer, start_at: int = None):
+    def _add_tracks(self, ctx: Context, tracks: list, player: lavalink.DefaultPlayer, start_at: int = None):
         if len(tracks) > 1 and start_at is not None:
             tracks = reversed(tracks)
 
@@ -496,6 +467,7 @@ class MusicCommands(commands.Cog):
             raise error
 
         else:
+            await ctx.send(error)
             raise error
 
 

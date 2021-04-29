@@ -4,6 +4,7 @@
 
 # Folders
 main_bot/packages/logs
+main_bot/logs
 src
 .idea
 .venv
