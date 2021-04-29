@@ -1,16 +1,17 @@
 import discord
 from discord.ext import commands, menus
+from lavalink import DefaultPlayer
 
 from .utils import convert_duration
 
 
 class QueuePaginatorSource(menus.ListPageSource):
 
-    def __init__(self, entries, player, per_page=10):
+    def __init__(self, entries, player: DefaultPlayer, per_page=10):
         super().__init__(entries, per_page=per_page)
         self.player = player
 
-    async def format_page(self, menu: menus.Menu, page: list) -> str:
+    async def format_page(self, menu: menus.MenuPages, page: list) -> str:
         msg = ''
         max_pages = "1" if self.get_max_pages() == 0 else self.get_max_pages()
 

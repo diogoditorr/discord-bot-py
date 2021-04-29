@@ -1,24 +1,30 @@
 from __future__ import annotations
+
 import os
+from pathlib import Path
+from typing import Union
 
 import aiosqlite
+from aiosqlite.cursor import Cursor
 
-from .prefix import Prefix
 from .player_permissions import Permissions
+from .prefix import Prefix
 
-
-PWD = os.path.abspath(os.path.dirname(__file__))
+PWD = Path(os.path.dirname(__file__))
 
 
 class Database:
+    __slots__ = ('connection', 'prefix', 'player_permissions', 'cursor')
+
     def __init__(self, connection: aiosqlite.Connection):
         self.connection = connection
+        self.cursor: Union[Cursor, None] = None
         self.prefix = Prefix(self.connection)
         self.player_permissions = Permissions(self.connection)
 
     @classmethod
     async def connect(cls) -> Database:
-        connection = await aiosqlite.connect(os.path.realpath(PWD + '\guilds_database.sqlite'))
+        connection = await aiosqlite.connect(PWD.joinpath('guilds_database.sqlite'))
         
         return Database(connection)
 

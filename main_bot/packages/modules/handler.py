@@ -1,4 +1,10 @@
 import re
+from typing import List, Tuple, Union
+
+import discord
+from discord import Embed
+from discord.ext.commands import Context
+from packages.modules.menu import SelectSong
 
 
 class Query:
@@ -24,3 +30,88 @@ class Query:
 
     def __repr__(self):
         return '<Query content="{}">'.format(self.query)
+
+
+class Result():
+
+    def __init__(self, ctx: Context, query: Query, data: dict, queue_first=False):
+        self.ctx = ctx
+        self.query = query
+        
+        self.load_type = data['loadType']
+        self.playlist_info = data['playlistInfo']
+        self.tracks = data['tracks']
+
+        self.queue_first = queue_first
+
+    @classmethod
+    async def parse(
+        cls, 
+        ctx: Context, 
+        query: Query, 
+        data: dict, 
+        queue_first=False
+    ) -> Tuple[List[dict], Union[Embed, None]]:
+        obj = cls(ctx, query, data, queue_first)
+
+        tracks = await obj.get_tracks()
+        embed = obj.get_embed(tracks)
+
+        return (tracks, embed)
+
+    async def get_tracks(self):
+        tracks: List[dict] = list()
+
+        if self.load_type == 'SEARCH_RESULT':
+            if self.query.first_song:
+                track = self.tracks[0]
+                tracks.append(track)
+
+            else:
+                if (track := await self.get_selected_track()):
+                    tracks.append(track)
+                else:
+                    await self.ctx.send("Nenhuma música foi selecionada!", delete_after=3)
+
+        elif self.load_type == 'TRACK_LOADED':
+            track = self.tracks[0]
+            tracks.append(track)
+
+        elif self.load_type == 'PLAYLIST_LOADED':
+            for track in self.tracks:
+                tracks.append(track)
+
+        return tracks
+
+    def get_embed(self, tracks: list):
+        embed: Union[discord.Embed, None] = None
+
+        if self.load_type == 'SEARCH_RESULT':
+            embed = self._build_queued_message(tracks[0])
+
+        elif self.load_type == 'TRACK_LOADED':
+            embed = self._build_queued_message(tracks[0])
+
+        elif self.load_type == 'PLAYLIST_LOADED':
+            embed = self._build_queued_playlist_message(tracks)
+
+        return embed
+
+    async def get_selected_track(self):
+        return await SelectSong(self.tracks).prompt(self.ctx)
+
+    def _build_queued_message(self, track: dict) -> discord.Embed:
+        return discord.Embed(
+            color=self.ctx.guild.me.top_role.color,
+            description=f"{'Queued First' if self.queue_first else 'Queued'}: "
+                        f"[{track['info']['title']}]({track['info']['uri']})  "
+                        f"[{self.ctx.author.mention}]"
+        )
+
+    def _build_queued_playlist_message(self, tracks) -> discord.Embed:
+        return discord.Embed(
+            color=self.ctx.guild.me.top_role.color,
+            description=f"{'Queued First' if self.queue_first else 'Queued'}: "
+                        f"`{len(tracks)}` músicas da playlist **{self.playlist_info['name']}**.  "
+                        f"[{self.ctx.author.mention}]"
+        )
