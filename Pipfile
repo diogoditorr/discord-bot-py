@@ -4,17 +4,18 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+autopep8 = "*"
 
 [packages]
 discord-py = {extras = ["voice"],version = "*"}
 youtube-dl = "*"
-google-api-python-client = "*"
 jishaku = "*"
 lavalink = "*"
 wavelink = "*"
-menus = {git = "https://github.com/Rapptz/discord-ext-menus.git"}
+discord-ext-menus = {git = "https://github.com/Rapptz/discord-ext-menus.git"}
 aiosqlite = "*"
 psutil = "*"
+google-api-python-client = "*"
 
 [requires]
 python_version = "3.8"

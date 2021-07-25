@@ -27,31 +27,29 @@ def get_client(config: dict) -> commands.Bot:
     intents.members = True
     client = commands.Bot(command_prefix=get_prefix, intents=intents)
 
-
     @client.event
     async def on_ready():
         print(f'Bot {client.user} is ready')
 
         game = discord.Game("Made by: Diego")
         await client.change_presence(status=discord.Status.online, activity=game)
-        
-        # Tasks.change_status.start()
-        
-        load_cogs()
-        
-        await Database.create()
 
+        # Tasks.change_status.start()
+
+        load_cogs()
+
+        await Database.create()
 
     def load_cogs():
         nonlocal on_start
         if on_start:
             for filename in os.listdir(config["cogs_path"]):
                 if filename.endswith('.py'):
-                    client.load_extension(f'{config["cogs_module_name"]}.{filename[:-3]}')
+                    client.load_extension(
+                        f'{config["cogs_module_name"]}.{filename[:-3]}')
             client.load_extension('jishaku')
 
             on_start = False
-
 
     @client.command()
     async def load(ctx, extension):
@@ -60,22 +58,21 @@ def get_client(config: dict) -> commands.Bot:
             client.load_extension(f'{config["cogs_module_name"]}.{extension}')
             await ctx.send(f'Ativado o arquivo "{extension}.py".')
 
-
     @client.command()
     async def unload(ctx, extension):
         if await permsVerify(ctx):
             await ctx.send(f'Desativando o arquivo "{extension}.py".')
-            client.unload_extension(f'{config["cogs_module_name"]}.{extension}')
+            client.unload_extension(
+                f'{config["cogs_module_name"]}.{extension}')
             await ctx.send(f'Desativado o arquivo "{extension}.py".')
-
 
     @client.command()
     async def reload(ctx, extension):
         if await permsVerify(ctx):
             await ctx.send(f'Recarregando o arquivo "{extension}.py".')
-            client.reload_extension(f'{config["cogs_module_name"]}.{extension}')
+            client.reload_extension(
+                f'{config["cogs_module_name"]}.{extension}')
             await ctx.send(f'Recarregado o arquivo "{extension}.py".')
-
 
     @client.command()
     async def reload_all(ctx):
@@ -84,16 +81,16 @@ def get_client(config: dict) -> commands.Bot:
 
             for filename_unload in os.listdir(config["cogs_path"]):
                 if filename_unload.endswith('.py'):
-                    client.reload_extension(f'{config["cogs_module_name"]}.{filename_unload[:-3]}')
+                    client.reload_extension(
+                        f'{config["cogs_module_name"]}.{filename_unload[:-3]}')
 
             await ctx.send(f'Todos os módulos foram recarregados.')
-
 
     @client.command()
     async def shutdown(ctx):
         if ctx.message.author.id == ctx.guild.owner.id:
             print("shutdown")
-            
+
             try:
                 await client.logout()
             except:
@@ -101,7 +98,6 @@ def get_client(config: dict) -> commands.Bot:
                 client.clear()
             else:
                 await ctx.send("You do not own this bot!")
-
 
     async def permsVerify(context):
         if context.message.author.id == context.guild.owner_id:

@@ -50,7 +50,7 @@ class UserPermission(BasePermissionPlayer):
         return '<UserPermission>'
 
 
-class PlayerPermissions():
+class PlayerPermissions:
     def __init__(self, guild: discord.Guild, perms: tuple):
         self.guild = guild
         self.admin = AdminPermission()
@@ -69,10 +69,11 @@ class PlayerPermissions():
             self.user.roles = perms[4]
             self.user.members = perms[5]
 
-    def has_author_permission(self, ctx: commands.Context, permission: Union[AdminPermission, DjPermission, UserPermission]) -> bool:
+    def has_author_permission(self, ctx: commands.Context,
+                              permission: Union[AdminPermission, DjPermission, UserPermission]) -> bool:
         if not isinstance(ctx.author, discord.Member):
-            raise AttributeError("'{}' is not a 'Member' object in 'Context.author'".format(ctx.author.__class__)) 
-        
+            raise AttributeError("'{}' is not a 'Member' object in 'Context.author'".format(ctx.author.__class__))
+
         if isinstance(permission, (AdminPermission, DjPermission, UserPermission)):
             return (self._author_in_members(ctx, permission) or self._author_in_roles(ctx, permission))
         else:
@@ -80,7 +81,7 @@ class PlayerPermissions():
 
     def _author_in_members(self, ctx: commands.Context, permission: Union[AdminPermission, DjPermission, UserPermission]) -> bool:
         if str(ctx.author.id) in permission.members or \
-         ctx.author.guild_permissions.administrator:
+                ctx.author.guild_permissions.administrator:
             return True
         else:
             return False
@@ -89,9 +90,9 @@ class PlayerPermissions():
         for role in ctx.author.roles:
             if str(role.id) in permission.roles:
                 return True
-        
+
         return False
-            
+
     def __repr__(self):
         return '<PlayerPermissions guild_id={} guild_name={}>'.format(self.guild.id, self.guild.name)
 
@@ -114,11 +115,11 @@ class Permissions:
             raise TypeError("'{}' is not an instance of PlayerPermissions".format(type(perms).__name__))
 
         list_permissions = [perms.admin.roles, perms.admin.members,
-            perms.dj.roles, perms.dj.members,
-            perms.user.roles, perms.user.members        
-        ]
+                            perms.dj.roles, perms.dj.members,
+                            perms.user.roles, perms.user.members
+                            ]
 
-        parameters = [ str(x) for x in list_permissions ]
+        parameters = [str(x) for x in list_permissions]
         parameters.append(perms.guild.id)
 
         await self.connection.execute("""
@@ -139,19 +140,18 @@ class Permissions:
             FROM player_permissions
             WHERE guild_id = ?
         """, (ctx.guild.id,))
-        
+
         perms = await self.cursor.fetchone()
-        
+
         return perms if perms else None
 
     async def _create_new_entry(self, ctx: commands.Context):
         everyone_role = get(ctx.author.roles, position=0)
 
-        await self.connection.execute("INSERT INTO player_permissions VALUES (?,?,?,?,?,?,?)", 
-                    (ctx.guild.id, '[]', '[]', f"['{everyone_role.id}']", '[]', f"['{everyone_role.id}']", '[]'))
+        await self.connection.execute("INSERT INTO player_permissions VALUES (?,?,?,?,?,?,?)",
+                                      (ctx.guild.id, '[]', '[]', f"['{everyone_role.id}']", '[]',
+                                       f"['{everyone_role.id}']", '[]'))
         await self.connection.commit()
-
 
     def __repr__(self):
         return '<Permissions>'
-

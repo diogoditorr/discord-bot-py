@@ -4,7 +4,7 @@ from pathlib import Path
 try:
     import settings
 except ImportError:
-    print("Could not import settings. Verify if you have created one.")
+    print("Could not import settings. Verify if you have in your directory.")
     exit()
 
 from client_config import get_client

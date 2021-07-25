@@ -27,3 +27,6 @@ musics.json
 *.bat
 *.db
 *.sqlite
+
+# Environment
+.env

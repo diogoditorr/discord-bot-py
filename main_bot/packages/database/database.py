@@ -10,11 +10,11 @@ from aiosqlite.cursor import Cursor
 from .player_permissions import Permissions
 from .prefix import Prefix
 
-PWD = Path(os.path.dirname(__file__))
 
 
 class Database:
     __slots__ = ('connection', 'prefix', 'player_permissions', 'cursor')
+    PWD = Path(os.path.dirname(__file__))
 
     def __init__(self, connection: aiosqlite.Connection):
         self.connection = connection
@@ -24,8 +24,8 @@ class Database:
 
     @classmethod
     async def connect(cls) -> Database:
-        connection = await aiosqlite.connect(PWD.joinpath('guilds_database.sqlite'))
-        
+        connection = await aiosqlite.connect(cls.PWD.joinpath('guilds_database.sqlite'))
+
         return Database(connection)
 
     @classmethod
