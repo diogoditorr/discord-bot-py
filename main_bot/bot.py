@@ -1,70 +1,35 @@
-import discord
 import os
 import sys
-import site
-from discord.ext import commands
+from pathlib import Path
 
-# Import of settings
-import settings
+from dotenv import dotenv_values
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+from client_config import get_client
 
-bot_token = settings.bot_token()
-prefix = settings.prefix()
+# Load environment variables from .env file
+env_path = Path(os.path.dirname(__file__)).absolute() / '.env'
+if not env_path.exists():
+    print("Could not find '.env' file. Verify if you have in your directory.")
+    exit()
 
-client = commands.Bot(command_prefix=prefix)
+# Constants
+ENV = dotenv_values(dotenv_path=env_path)
+PWD = Path(os.path.dirname(__file__))
 
-cogs_PATH = f'{sys.path[0]}\cogs'
+# --------Configuration--------
+config = {
+    "cogs_path": PWD.joinpath('packages', 'cogs'),
+    "cogs_module_name": 'packages.cogs'
+}
 
-async def permsVerify(context):
-    if context.message.author.id == context.guild.owner.id:
-        return True
-    else:
-        await context.send("Você não tem permissão para usar essa comando.")
-        return False
-
-
-@client.command()
-async def load(ctx, extension):
-    if await permsVerify(ctx):
-        await ctx.send(f'Ativando o arquivo "{extension}.py".')
-        client.load_extension(f'cogs.{extension}')
-        await ctx.send(f'Ativado o arquivo "{extension}.py".')
-
-
-@client.command()
-async def unload(ctx, extension):
-    if await permsVerify(ctx):
-        await ctx.send(f'Desativando o arquivo "{extension}.py".')
-        client.unload_extension(f'cogs.{extension}')
-        await ctx.send(f'Desativado o arquivo "{extension}.py".')
-
-
-@client.command()
-async def reload(ctx, extension):
-    if await permsVerify(ctx):
-        await ctx.send(f'Recarregando o arquivo "{extension}.py".')
-        client.reload_extension(f'cogs.{extension}')
-        await ctx.send(f'Recarregado o arquivo "{extension}.py".')
-
-
-@client.command()
-async def reload_all(ctx):
-    if await permsVerify(ctx):
-        await ctx.send(f'Recarregando todos os arquivos.')
-
-        for filename_unload in os.listdir(cogs_PATH):
-            if filename_unload.endswith('.py'):
-                client.reload_extension(f'cogs.{filename_unload[:-3]}')
-
-        await ctx.send(f'Todos os módulos foram recarregados.')
-
-for filename in os.listdir(cogs_PATH):
-    if filename.endswith('.py'):
-        client.load_extension(f'cogs.{filename[:-3]}')
-client.load_extension('jishaku')
+client = get_client(config)
+# print("CWD:", os.getcwd())
+# print("FILE:", __file__)
+# print("PWD", PWD)
+# print("COGS_PATH:", COGS_PATH)
+# print("Files:", os.listdir(COGS_PATH))
+# -----------------------------
 
 # The token is necessary to connect the client with the API
 # on discord and use the bot.
-
-client.run(bot_token)
+client.run(ENV['BOT_TOKEN'])

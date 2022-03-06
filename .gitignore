@@ -3,19 +3,30 @@
 *.webm
 
 # Folders
+main_bot/packages/logs
+main_bot/logs
 src
 .idea
 .venv
-.vscode
 
 # Python Files
 settings.py
+
+# Lavalink files
+application.yml
+*.jar
 
 # Python Cache
 __pycache__
 
 # Files Created
 discord.log
+spring.log
+musics.json
 *.bat
 *.db
 *.sqlite
+
+# Environment
+.env
+.tool-versions
