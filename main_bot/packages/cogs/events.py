@@ -1,11 +1,13 @@
-import sys
 import re
+import sys
 import traceback
 from typing import List
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, menus
 from discord.ext.commands import Context
+
+from ..modules.menu import TracebackPaginatorSource
 
 
 class Events(commands.Cog):
@@ -35,9 +37,17 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx: Context, error):
         a = sys.exc_info()
-        content = "".join(traceback.format_exception(type(error.original), error.original, error.original.__traceback__)) if \
-            hasattr(error, 'original') else "".join(traceback.format_exception(type(error), error, error.__traceback__))
-        await ctx.send(f"""```py\n{content}```""")
+        if hasattr(error, 'original'):
+            content = "".join(traceback.format_exception(type(error.original), error.original, error.original.__traceback__))
+        else:
+            content = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+
+        entries = [content[i:i + 1990] for i in range(0, len(content), 1990)]
+        source = TracebackPaginatorSource(entries=entries)
+        paginator = menus.MenuPages(
+            source=source, timeout=120, delete_message_after=True)
+
+        await paginator.start(ctx)
        
 
 def setup(client):

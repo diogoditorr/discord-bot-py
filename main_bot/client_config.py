@@ -8,20 +8,8 @@ from discord.ext import commands
 from packages.cogs.tasks import Tasks
 from packages.database.database import Database
 
-
-async def get_prefix(bot, message: discord.Message):
-    # message.guild: Literal[discord.Guild]
-
-    database = await Database.connect()
-
-    guild: discord.Guild = message.guild
-    prefix = await database.prefix.get(guild)
-
-    return prefix
-
-
 def get_client(config: dict) -> commands.Bot:
-    on_start = True
+    first_start = True
 
     intents = discord.Intents.default()
     intents.members = True
@@ -41,15 +29,15 @@ def get_client(config: dict) -> commands.Bot:
         await Database.create()
 
     def load_cogs():
-        nonlocal on_start
-        if on_start:
+        nonlocal first_start
+        if first_start:
             for filename in os.listdir(config["cogs_path"]):
                 if filename.endswith('.py'):
                     client.load_extension(
                         f'{config["cogs_module_name"]}.{filename[:-3]}')
             client.load_extension('jishaku')
 
-            on_start = False
+            first_start = False
 
     @client.command()
     async def load(ctx, extension):
@@ -92,7 +80,7 @@ def get_client(config: dict) -> commands.Bot:
             print("shutdown")
 
             try:
-                await client.logout()
+                await client.close()
             except:
                 print("EnvironmentError")
                 client.clear()
@@ -107,3 +95,11 @@ def get_client(config: dict) -> commands.Bot:
             return False
 
     return client
+
+async def get_prefix(bot, message: discord.Message):
+    database = await Database.connect()
+
+    guild: discord.Guild = message.guild
+    prefix = await database.prefix.get(guild)
+
+    return prefix

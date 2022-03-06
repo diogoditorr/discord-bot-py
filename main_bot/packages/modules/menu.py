@@ -1,3 +1,4 @@
+from typing import Union
 import discord
 from discord.ext import commands, menus
 from lavalink import DefaultPlayer
@@ -7,7 +8,7 @@ from .utils import convert_duration
 
 class QueuePaginatorSource(menus.ListPageSource):
 
-    def __init__(self, entries, player: DefaultPlayer, per_page=10):
+    def __init__(self, entries: list, player: DefaultPlayer, per_page=10):
         super().__init__(entries, per_page=per_page)
         self.player = player
 
@@ -88,3 +89,13 @@ class SelectSong(menus.Menu):
     async def prompt(self, ctx):
         await self.start(ctx, wait=True)
         return self.result
+
+class TracebackPaginatorSource(menus.ListPageSource):
+    def __init__(self, entries: list, per_page=1):
+        super().__init__(entries=entries, per_page=per_page)
+
+    async def format_page(self, menu: menus.MenuPages, page: Union[list, str]) -> str:
+        return f'```py\n{page}```'
+
+    def is_paginating(self):
+        return True

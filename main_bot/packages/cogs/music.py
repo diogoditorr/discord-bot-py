@@ -1,20 +1,22 @@
-import re
+import os
 import random
-from typing import Dict, Iterator, Optional, Union, Tuple, List
+import re
 import typing
+from typing import Dict, Iterator, List, Optional, Tuple, Union
 
 import discord
+import lavalink
+import yaml
+from pathlib import Path
 from discord.ext import commands, menus
 from discord.ext.commands import Context
 from discord.utils import get
-from jishaku import Jishaku, JishakuBase
-import lavalink
+from jishaku import Jishaku
 
-from ..modules.menu import QueuePaginatorSource, SelectSong
-from ..modules.decorators import (has_dj_permission, has_user_permission)
-from ..modules.handler import Query, Result
 from ..database.exceptions import PlayerPermissionError
-
+from ..modules.decorators import has_dj_permission, has_user_permission
+from ..modules.handler import Query, Result
+from ..modules.menu import QueuePaginatorSource, SelectSong
 
 URL_RX = re.compile(r'https?://(?:www\.)?.+')
 
@@ -29,12 +31,14 @@ class MusicCommands(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
 
+        self.load_yaml_config()
+
         if not hasattr(self, 'lavalink'):
             self.lavalink = lavalink.Client(self.client.user.id)
             self.lavalink.add_node(
-                host='localhost',
-                port=3434,
-                password='testing',
+                host=self.config['server']['address'],
+                port=self.config['server']['port'],
+                password=self.config['lavalink']['server']['password'],
                 region='brazil',
                 name='default-node'
             )
@@ -45,6 +49,16 @@ class MusicCommands(commands.Cog):
             lavalink.DefaultPlayer.is_shuffled = is_shuffled
 
         self.lavalink.add_event_hook(self.track_hook)
+
+    def load_yaml_config(self):
+        yaml_config_path = \
+            Path(os.path.dirname(__file__)).parent.parent / 'application.yml'
+
+        if not yaml_config_path.exists():
+            raise FileNotFoundError(f'{yaml_config_path} not found.')
+
+        with open(yaml_config_path) as f:
+            self.config = yaml.safe_load(f)
 
     async def track_hook(self, event: lavalink.Event):
         if isinstance(event, lavalink.TrackEndEvent):
@@ -157,8 +171,9 @@ class MusicCommands(commands.Cog):
                 # queue
                 pass
 
-            elif bot_should_be_connected_command and is_author_in_different_channel(ctx, player) \
-                    and same_channel_command:
+            elif bot_should_be_connected_command and \
+                    is_author_in_different_channel(ctx, player) and \
+                    same_channel_command:
                 raise commands.CommandInvokeError(
                     'You need to be in my voicechannel.')
 
@@ -230,10 +245,9 @@ class MusicCommands(commands.Cog):
             return await ctx.send("Nenhuma música está sendo tocada.")
 
         entries = player.queue
-
-        pages = QueuePaginatorSource(entries=entries, player=player)
+        source = QueuePaginatorSource(entries=entries, player=player)
         paginator = menus.MenuPages(
-            source=pages, timeout=120, delete_message_after=True)
+            source=source, timeout=120, delete_message_after=True)
 
         await paginator.start(ctx)
 
@@ -378,24 +392,6 @@ class MusicCommands(commands.Cog):
         if channel:
             await ctx.send(f"Desconectado do canal `{channel.name}`")
 
-    # @commands.command()
-    # async def playtwo(self, ctx):
-    #     player = self._get_player(ctx)
-    #     with open(os.path.dirname(os.path.abspath(__file__))+'\\musics.json', 'w') as file:
-    #         json_file = [{
-    #             'author': track.author,
-    #             'duration': track.duration,
-    #             'extra': track.extra,
-    #             'identifier': track.identifier,
-    #             'is_seekable': track.is_seekable,
-    #             'requester': track.requester,
-    #             'stream': track.stream,
-    #             'title': track.title,
-    #             'track': track.track,
-    #             'uri': track.uri
-    #         } for track in player.queue]
-    #         json.dump(json_file, file, indent=2)
-
     def _get_player(self, ctx: Context) -> lavalink.DefaultPlayer:
         return self.lavalink.player_manager.get(ctx.guild.id)
 
@@ -435,10 +431,8 @@ class MusicCommands(commands.Cog):
 
     def _remove_queue_track(self, queue: list, track: lavalink.AudioTrack):
         matched_track = get(queue, title=track.title)
-
         if matched_track:
             queue.remove(matched_track)
-
         return queue
 
     @join.error
@@ -453,7 +447,7 @@ class MusicCommands(commands.Cog):
     @shuffle.error
     @stop.error
     @volume.error
-    @JishakuBase.jsk_su.error
+    # @JishakuBase.jsk_su.error
     async def error_handler(self, ctx, error):
         prefix = await self.bot.get_prefix(ctx) if isinstance(self, Jishaku) \
             else await self.client.get_prefix(ctx)
