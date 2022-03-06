@@ -1,0 +1,16 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+autopep8 = "*"
+
+[packages]
+discord-py = {extras = ["voice"],version = "*"}
+youtube-dl = "*"
+jishaku = "*"
+google-api-python-client = "*"
+
+[requires]
+python_version = "3.8"
