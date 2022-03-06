@@ -4,36 +4,52 @@
 * [Português Brasil](./README-pt-br.md)
 
 # 🤖 discord-bot-py
-Working with the Discord.py library.
+This bot has commands focused on **music**, like *play, pause, repeat, next, stop...*.
 
-This bot has commands focused on **music**. It has main commands like *play, pause, repeat, next, stop...*, and commands to create a playlist in your server, stored in a database **(sqlite3)**.
+This version uses [Lavalink](https://github.com/freyacodes/Lavalink). Readme of previous version with youtube-dl [here](docs/README-youtube-dl.md) (deprecated)
 
 ## ⚙ How to run the Bot:
 
-You need first create a `settings.py` inside the `main_bot` folder with the following code:
+* Cloning the project:
+```bash
+$ git clone https://github.com/diogoditorr/discord-bot-py
 
-```python
-def bot_token():
-    return 'Your bot Token'
-
-def prefix():.
-    return 'Prefix for the bot. Can be . ? / - whatever '
-
-def youtube_api_key():
-    return 'Your Youtube API Key. If you don't have one, you need to create. It's free.'
+# Enter the main_bot folder
+$ cd discord-bot-py/main_bot
 ```
 
-#### Requirements (It's also in Pipfile):
-* [**Python version 3.8+**](https://www.python.org/)
-* [**Discord.py**](https://github.com/Rapptz/discord.py) 
-* [**Youtube-dl**](https://github.com/ytdl-org/youtube-dl) - I recommend install as in your virtual environment as in your python PATH.
-* [**google-api-python-client**](https://github.com/googleapis/google-api-python-client) - Module to use [Youtube Data API](https://developers.google.com/youtube/v3/getting-started) -> Read only the part "Before you start" to create your new key. 
-* [**jishaku**](https://github.com/Gorialis/jishaku)
+* Install dependencies with pipenv:
+```bash
+$ pipenv install
+```
 
-#### External Requirements:
-* [**FFmpeg**](https://ffmpeg.org/) - It converts the audio to play on Discord. Download and place the directory of the folder in your Enviroment Variables.
+* Create **.env** from the example file. Do not forget to set your **BOT_TOKEN** in **.env**.
 
-After you've done the things above. Just run `/main_bot/bot.py` file.
+### **Running Lavalink**
+
+* Create the **application.yml** file from example.
+* Download Lavalink.jar [here](https://github.com/freyacodes/Lavalink/releases) or use this command inside the _main_bot_ folder:
+
+```bash
+$ curl -s https://api.github.com/repos/freyacodes/Lavalink/releases/latest \
+| grep "Lavalink.jar" \
+| cut -d : -f 2,3 \
+| tr -d \" \
+| wget -qi -
+```
+
+* Run in a new terminal
+```bash
+$ java -jar Lavalink.jar
+```
+
+> More information in [Lavalink repository](https://github.com/freyacodes/Lavalink)
+
+### **Running the Bot**
+```bash
+$ python bot.py
+```
+
 
 ## 🎶 All Commands
 * [Click here](./docs/commands-en.md)
