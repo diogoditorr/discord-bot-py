@@ -122,14 +122,6 @@ class Commands(commands.Cog):
                 await ctx.send(f'Desbanido {user.name}#{user.discriminator}')
                 return
 
-    @commands.command()
-    async def x1(self, ctx, member: discord.Member, *, msg):
-        await ctx.send(
-            f'**VEM PRO X1 LIXO!!! {member.mention}** '
-            f'\nO jogador {ctx.author.mention} te desafiou pro **x1 lixo** com a seguinte mensagem: '
-            f'\n\n *"{msg}"* '
-            f'\n\n**Vai arregar?!?!**')
-
 
 def setup(client):
     client.add_cog(Commands(client))
