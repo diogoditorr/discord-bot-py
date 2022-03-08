@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-"discord.py" = {extras = ["voice"], version = "*"}
+"discord.py" = {git = "https://github.com/Rapptz/discord.py"}
 discord-ext-menus = {git = "https://github.com/Rapptz/discord-ext-menus"}
 lavalink = "*"
 aiosqlite = "*"
