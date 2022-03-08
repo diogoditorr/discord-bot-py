@@ -41,14 +41,14 @@ def get_client(config: dict) -> commands.Bot:
 
     @client.command()
     async def load(ctx, extension):
-        if await permsVerify(ctx):
+        if await is_author_bot_owner(ctx):
             await ctx.send(f'Ativando o arquivo "{extension}.py".')
             client.load_extension(f'{config["cogs_module_name"]}.{extension}')
             await ctx.send(f'Ativado o arquivo "{extension}.py".')
 
     @client.command()
     async def unload(ctx, extension):
-        if await permsVerify(ctx):
+        if await is_author_bot_owner(ctx):
             await ctx.send(f'Desativando o arquivo "{extension}.py".')
             client.unload_extension(
                 f'{config["cogs_module_name"]}.{extension}')
@@ -56,7 +56,7 @@ def get_client(config: dict) -> commands.Bot:
 
     @client.command()
     async def reload(ctx, extension):
-        if await permsVerify(ctx):
+        if await is_author_bot_owner(ctx):
             await ctx.send(f'Recarregando o arquivo "{extension}.py".')
             client.reload_extension(
                 f'{config["cogs_module_name"]}.{extension}')
@@ -64,7 +64,7 @@ def get_client(config: dict) -> commands.Bot:
 
     @client.command()
     async def reload_all(ctx):
-        if await permsVerify(ctx):
+        if await is_author_bot_owner(ctx):
             await ctx.send(f'Recarregando todos os arquivos.')
 
             for filename_unload in os.listdir(config["cogs_path"]):
@@ -87,7 +87,7 @@ def get_client(config: dict) -> commands.Bot:
             else:
                 await ctx.send("You do not own this bot!")
 
-    async def permsVerify(context):
+    async def is_author_bot_owner(context):
         if context.message.author.id == context.guild.owner_id:
             return True
         else:

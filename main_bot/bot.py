@@ -23,12 +23,6 @@ config = {
 }
 
 client = get_client(config)
-# print("CWD:", os.getcwd())
-# print("FILE:", __file__)
-# print("PWD", PWD)
-# print("COGS_PATH:", COGS_PATH)
-# print("Files:", os.listdir(COGS_PATH))
-# -----------------------------
 
 # The token is necessary to connect the client with the API
 # on discord and use the bot.
