@@ -23,7 +23,7 @@ $ cd discord-bot-py/main_bot
 $ pipenv install
 ```
 
-* Create **.env** from the example file. Do not forget to set your **BOT_TOKEN** in **.env**.
+* Create **.env** from the example file. Do not forget to set your **BOT_TOKEN**.
 
 ### **Running Lavalink**
 
