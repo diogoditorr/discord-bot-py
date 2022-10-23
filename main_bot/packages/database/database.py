@@ -11,7 +11,6 @@ from .player_permissions import Permissions
 from .prefix import Prefix
 
 
-
 class Database:
     __slots__ = ('connection', 'prefix', 'player_permissions', 'cursor')
     PWD = Path(os.path.dirname(__file__))

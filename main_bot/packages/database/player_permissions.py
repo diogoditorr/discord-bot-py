@@ -69,25 +69,25 @@ class PlayerPermissions:
             self.user.roles = perms[4]
             self.user.members = perms[5]
 
-    def has_author_permission(self, ctx: commands.Context,
+    def has_user_permission(self, user: discord.Member | discord.User,
                               permission: Union[AdminPermission, DjPermission, UserPermission]) -> bool:
-        if not isinstance(ctx.author, discord.Member):
-            raise AttributeError("'{}' is not a 'Member' object in 'Context.author'".format(ctx.author.__class__))
+        if not isinstance(user, discord.Member):
+            raise AttributeError("'{}' is not a 'discord.Member' object".format(user.__class__))
 
         if isinstance(permission, (AdminPermission, DjPermission, UserPermission)):
-            return (self._author_in_members(ctx, permission) or self._author_in_roles(ctx, permission))
+            return (self._user_in_members(user, permission) or self._user_in_roles(user, permission))
         else:
             raise TypeError
 
-    def _author_in_members(self, ctx: commands.Context, permission: Union[AdminPermission, DjPermission, UserPermission]) -> bool:
-        if str(ctx.author.id) in permission.members or \
-                ctx.author.guild_permissions.administrator:
+    def _user_in_members(self, user: discord.Member, permission: Union[AdminPermission, DjPermission, UserPermission]) -> bool:
+        if str(user.id) in permission.members or \
+                user.guild_permissions.administrator:
             return True
         else:
             return False
 
-    def _author_in_roles(self, ctx: commands.Context, permission: Union[AdminPermission, DjPermission, UserPermission]) -> bool:
-        for role in ctx.author.roles:
+    def _user_in_roles(self, user: discord.Member, permission: Union[AdminPermission, DjPermission, UserPermission]) -> bool:
+        for role in user.roles:
             if str(role.id) in permission.roles:
                 return True
 
@@ -101,14 +101,14 @@ class Permissions:
     def __init__(self, connection: aiosqlite.Connection):
         self.connection = connection
 
-    async def get(self, ctx: commands.Context) -> PlayerPermissions:
+    async def get(self, user: discord.Member | discord.User, guild: discord.Guild) -> PlayerPermissions:
         """Returns a PlayerPermissions object"""
-        perms = await self._fetch_guild_perms(ctx)
+        perms = await self._fetch_guild_perms(guild)
         if not perms:
-            await self._create_new_entry(ctx)
-            perms = await self._fetch_guild_perms(ctx)
+            await self._create_new_entry(user, guild)
+            perms = await self._fetch_guild_perms(guild)
 
-        return PlayerPermissions(ctx.guild, perms)
+        return PlayerPermissions(guild, perms)
 
     async def update(self, perms: PlayerPermissions):
         if not isinstance(perms, PlayerPermissions):
@@ -120,7 +120,7 @@ class Permissions:
                             ]
 
         parameters = [str(x) for x in list_permissions]
-        parameters.append(perms.guild.id)
+        parameters.append(str(perms.guild.id))
 
         await self.connection.execute("""
             UPDATE player_permissions
@@ -131,7 +131,7 @@ class Permissions:
         """, parameters)
         await self.connection.commit()
 
-    async def _fetch_guild_perms(self, ctx: commands.Context):
+    async def _fetch_guild_perms(self, guild: discord.Guild) -> tuple|None:
         self.cursor = await self.connection.execute("""
             SELECT admin_roles, admin_members, 
             dj_roles, dj_members, 
@@ -139,17 +139,17 @@ class Permissions:
             
             FROM player_permissions
             WHERE guild_id = ?
-        """, (ctx.guild.id,))
+        """, (guild.id,))
 
         perms = await self.cursor.fetchone()
 
         return perms if perms else None
 
-    async def _create_new_entry(self, ctx: commands.Context):
-        everyone_role = get(ctx.author.roles, position=0)
+    async def _create_new_entry(self, user: discord.Member, guild: discord.Guild):
+        everyone_role = get(user.roles, position=0)
 
         await self.connection.execute("INSERT INTO player_permissions VALUES (?,?,?,?,?,?,?)",
-                                      (ctx.guild.id, '[]', '[]', f"['{everyone_role.id}']", '[]',
+                                      (guild.id, '[]', '[]', f"['{everyone_role.id}']", '[]',
                                        f"['{everyone_role.id}']", '[]'))
         await self.connection.commit()
 

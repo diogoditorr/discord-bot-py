@@ -1,14 +1,20 @@
-from typing import Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Union
+
 import discord
 from discord.ext import commands, menus
 from lavalink import DefaultPlayer
 
 from .utils import convert_duration
 
+if TYPE_CHECKING:
+    from ..cogs.music import Player
+
 
 class QueuePaginatorSource(menus.ListPageSource):
 
-    def __init__(self, entries: list, player: DefaultPlayer, per_page=10):
+    def __init__(self, entries: list, player: Player, per_page=10):
         super().__init__(entries, per_page=per_page)
         self.player = player
 
@@ -38,8 +44,9 @@ class QueuePaginatorSource(menus.ListPageSource):
         index = self.per_page * menu.current_page
         for track in page:
             index += 1
-            msg = msg + f'`[{index}]` **{track.title}** - *[@{track.extra["requester_name"]}]*\n'
-        
+            msg = msg + \
+                f'`[{index}]` **{track.title}** - *[@{track.extra["requester_name"]}]*\n'
+
         return msg
 
     def is_paginating(self):
@@ -54,13 +61,14 @@ class SelectSong(menus.Menu):
 
     async def send_initial_message(self, ctx, channel):
         msg = '**_Selecione uma faixa clicando no emoji correspondente._**\n'
-    
+
         for index in range(0, 5):
             track = self.tracks[index]['info']
-            msg = msg + f"**{(index + 1)})** {track['title']} **- ({convert_duration(track['length'])})**\n"
-        
+            msg = msg + \
+                f"**{(index + 1)})** {track['title']} **- ({convert_duration(track['length'])})**\n"
+
         return await channel.send(msg)
-        
+
     @menus.button('1️⃣')
     async def first(self, payload):
         self.result = self.tracks[0]
@@ -89,6 +97,7 @@ class SelectSong(menus.Menu):
     async def prompt(self, ctx):
         await self.start(ctx, wait=True)
         return self.result
+
 
 class TracebackPaginatorSource(menus.ListPageSource):
     def __init__(self, entries: list, per_page=1):

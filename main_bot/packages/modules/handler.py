@@ -2,7 +2,8 @@ import re
 from typing import List, Tuple, Union
 
 import discord
-from discord import Embed
+from discord import app_commands
+from discord import Embed, Interaction
 from discord.ext.commands import Context
 from packages.modules.menu import SelectSong
 
@@ -11,7 +12,7 @@ class Query:
     _URL_RX = re.compile(r'https?://(?:www\.)?.+')
 
     def __init__(self, content, youtube_mode=True):
-        
+
         arguments = content.split()
         if arguments[0] == '-f':
             self.first_song = True
@@ -23,7 +24,7 @@ class Query:
         self.query = self.query.strip('<>')
 
         if Query._URL_RX.match(self.query):
-            self.first_song = True          
+            self.first_song = True
         else:
             if youtube_mode:
                 self.query = f'ytsearch:{self.query}'
@@ -32,12 +33,18 @@ class Query:
         return '<Query content="{}">'.format(self.query)
 
 
+class QueryTransformer(app_commands.Transformer):
+    @classmethod
+    async def transform(cls, interaction: Interaction, value: str) -> Query:
+        return Query(value)
+
+
 class Result():
 
-    def __init__(self, ctx: Context, query: Query, data: dict, queue_first=False):
-        self.ctx = ctx
+    def __init__(self, interaction: Interaction, query: Query, data: dict, queue_first=False):
+        self.interaction = interaction
         self.query = query
-        
+
         self.load_type = data['loadType']
         self.playlist_info = data['playlistInfo']
         self.tracks = data['tracks']
@@ -46,13 +53,13 @@ class Result():
 
     @classmethod
     async def parse(
-        cls, 
-        ctx: Context, 
-        query: Query, 
-        data: dict, 
+        cls,
+        interaction: Interaction,
+        query: Query,
+        data: dict,
         queue_first=False
     ) -> Tuple[List[dict], Union[Embed, None]]:
-        obj = cls(ctx, query, data, queue_first)
+        obj = cls(interaction, query, data, queue_first)
 
         tracks = await obj.get_tracks()
         embed = obj.get_embed(tracks)
@@ -71,7 +78,7 @@ class Result():
                 if (track := await self.get_selected_track()):
                     tracks.append(track)
                 else:
-                    await self.ctx.send("Nenhuma música foi selecionada!", delete_after=3)
+                    await self.interaction.response.send_message("Nenhuma música foi selecionada!", delete_after=3)
 
         elif self.load_type == 'TRACK_LOADED':
             track = self.tracks[0]
@@ -98,20 +105,20 @@ class Result():
         return embed
 
     async def get_selected_track(self):
-        return await SelectSong(self.tracks).prompt(self.ctx)
+        return await SelectSong(self.tracks).prompt(self.interaction)
 
     def _build_queued_message(self, track: dict) -> discord.Embed:
         return discord.Embed(
-            color=self.ctx.guild.me.top_role.color,
+            color=self.interaction.guild.me.top_role.color,
             description=f"{'Queued First' if self.queue_first else 'Queued'}: "
                         f"[{track['info']['title']}]({track['info']['uri']})  "
-                        f"[{self.ctx.author.mention}]"
+                        f"[{self.interaction.user.mention}]"
         )
 
     def _build_queued_playlist_message(self, tracks) -> discord.Embed:
         return discord.Embed(
-            color=self.ctx.guild.me.top_role.color,
+            color=self.interaction.guild.me.top_role.color,
             description=f"{'Queued First' if self.queue_first else 'Queued'}: "
                         f"`{len(tracks)}` músicas da playlist **{self.playlist_info['name']}**.  "
-                        f"[{self.ctx.author.mention}]"
+                        f"[{self.interaction.user.mention}]"
         )

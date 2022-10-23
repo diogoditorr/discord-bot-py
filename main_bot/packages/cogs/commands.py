@@ -1,44 +1,33 @@
-import discord
-import time
-import random
-from discord.ext import commands
+import sys
+import traceback
 
-from ..database.database import Database
+from discord import Interaction, Member, Message, app_commands
+from discord.ext import menus
 
-def permsVerify(context):
-    perm = ['Admins']
-    roles = [x.name for x in context.author.roles]
-    print(roles)
-
-    for x in range(0, len(perm)):
-        if roles.__contains__(perm[x]):
-            return True
-
-    return False
+from ..modules.menu import TracebackPaginatorSource
 
 
-class Commands(commands.Cog):
+class Commands(app_commands.Group):
+    @app_commands.command()
+    async def ping(self, interaction: Interaction):
+        await interaction.response.send_message(f'Pong! {round(interaction.client.latency * 1000)}ms {interaction.user.mention}')
 
-    def __init__(self, client):
-        self.client = client
-
-    @commands.command()
-    async def prefix(self, ctx, *args):
-        database = await Database.connect()
-
-        if not args:
-            await ctx.send(f"O prefixo para esse servidor é `{await database.prefix.get(ctx.guild)}`")
+    async def on_error(
+        self, interaction: Interaction,
+        command: app_commands.Command,
+        error: app_commands.AppCommandError
+    ):
+        a = sys.exc_info()
+        if hasattr(error, 'original'):
+            content = "".join(traceback.format_exception(
+                type(error.original), error.original, error.original.__traceback__))
         else:
-            prefix = " ".join(args)
+            content = "".join(traceback.format_exception(
+                type(error), error, error.__traceback__))
 
-            await database.prefix.update(ctx.guild, prefix)
-            await ctx.send("O prefixo do servidor mudou!\n"
-                          f"Utilize qualquer comando agora com o prefixo:  `{prefix}`")
+        entries = [content[i:i + 1990] for i in range(0, len(content), 1990)]
+        source = TracebackPaginatorSource(entries=entries)
+        paginator = menus.MenuPages(
+            source=source, timeout=120, delete_message_after=True)
 
-
-    @commands.command()
-    async def ping(self, ctx):
-        await ctx.send(f'Pong! {round(self.client.latency * 1000)}ms {ctx.author.mention}')
-
-def setup(client):
-    client.add_cog(Commands(client))
+        await paginator.start(interaction)

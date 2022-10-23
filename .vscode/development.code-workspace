@@ -9,7 +9,14 @@
 			"path": ".."
 		}
 	],
-	"settings": {},
+	"settings": {
+		"python.analysis.typeCheckingMode": "basic",
+		"python.analysis.diagnosticSeverityOverrides": {
+			"reportGeneralTypeIssues": "warning",
+			// "reportOptionalMemberAccess": "warning",
+			"reportOptionalMemberAccess": "none"
+		}
+	},
 	"launch": {
 		"version": "0.2.0",
 		"configurations": [
